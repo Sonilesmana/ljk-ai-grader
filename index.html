@@ -778,8 +778,101 @@
       return out;
     }
 
+    /* ------- Parser lokal untuk template kunci .docx sekolah -------
+       Mendukung dua format yang umum dipakai:
+       - tabel "No | Kunci" 4 kolom (PG 1-40, Menjodohkan 41-50)
+       - rubrik uraian per soal dengan "Skor maksimal", atau tabel
+         "No. Soal | Pokok-Pokok Jawaban (Kunci) | Skor".
+       Kunci menjodohkan boleh huruf di luar A-E (mis. H, M, J). */
+    function detectEsaiBobot(text) {
+      const patterns = [
+        /bobot\s*(\d+(?:[.,]\d+)?)\s*poin\s*per\s*soal/i,
+        /(\d+)\s*soal\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*poin/i,
+        /uraian[^\n]*\n(?:\s*[^\n]*\n){1,4}\s*\d+\s*\n\s*(\d+(?:[.,]\d+)?)/i,
+        /skor\s*maksimal\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i
+      ];
+      for (let i = 0; i < patterns.length; i++) {
+        const m = String(text).match(patterns[i]);
+        if (!m) continue;
+        const v = num(m[2] != null ? m[2] : m[1], 0);
+        if (v > 0 && v <= 20) return clamp(v, 0.5, 100);
+      }
+      return 10;
+    }
+
+    function parseKeyLocal(text) {
+      const out = emptyKey();
+      const raw = String(text || '');
+      const lines = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+      const sections = { pg: [], menjodohkan: [], esai: [] };
+      let seg = '';
+      lines.forEach((l) => {
+        if (/kunci jawaban|rubrik/i.test(l)) {
+          if (/menjodohkan/i.test(l)) seg = 'menjodohkan';
+          else if (/uraian|esai|paparan/i.test(l)) seg = 'esai';
+          else if (/pilihan ganda/i.test(l)) seg = 'pg';
+          else seg = '';
+          return;
+        }
+        if (seg) sections[seg].push(l);
+      });
+
+      ['pg', 'menjodohkan'].forEach((g) => {
+        const seen = new Set();
+        const arr = sections[g];
+        for (let i = 0; i < arr.length - 1; i++) {
+          if (!/^\d{1,3}$/.test(arr[i])) continue;
+          const no = parseInt(arr[i], 10);
+          if (no < 1 || no > 100 || seen.has(no)) continue;
+          const m = arr[i + 1].match(/^[\(\[]?([A-Z]{1,3})[\)\].]?$/i);
+          if (!m) continue;
+          if (g === 'pg' && !/^[A-E]$/i.test(m[1])) continue;
+          seen.add(no);
+          out[g].push({ nomor: no, kunci: m[1].toUpperCase() });
+        }
+        out[g].sort((a, b) => a.nomor - b.nomor);
+      });
+
+      const bobot = detectEsaiBobot(sections.esai.join('\n'));
+      let curNo = 0, curText = [], collecting = false;
+      const finish = () => {
+        if (!curNo) return;
+        const kunci = curText.join(' ').replace(/\s+/g, ' ').trim();
+        out.esai.push({
+          nomor: curNo,
+          kunci_jawaban: kunci.slice(0, 2000) || '[Kunci uraian tidak terbaca]',
+          bobot_maksimal: bobot
+        });
+      };
+      sections.esai.forEach((l, i) => {
+        const sm = l.match(/^(?:soal\s*)?no\.?\s*(?:soal\s*)?(\d{1,3})\b/i);
+        const bare = /^\d{1,3}$/.test(l) ? parseInt(l, 10) : 0;
+        const bareValid = bare >= 45 && bare <= 100 && !/^(nilai akhir|total skor|catatan)/i.test(sections.esai[i + 1] || '');
+        if (sm || bareValid) {
+          finish();
+          curNo = parseInt(sm ? sm[1] : bare, 10);
+          curText = []; collecting = true;
+          return;
+        }
+        if (!curNo || !collecting) return;
+        if (/^aspek penilaian/i.test(l)) { collecting = false; return; }
+        if (/^(skor|kriteria|no\.?\s*soal|pokok-pokok|deskripsi jawaban benar|kunci\s*\/\s*pokok jawaban|pedoman umum|catatan|total skor|nilai akhir|skor maksimal)/i.test(l)) return;
+        if (/^\d+(?:[.,]\d+)?$/.test(l)) return;
+        if (curText.join(' ').length < 2000) curText.push(l.replace(/^\d+[.)]\s*/, ''));
+      });
+      finish();
+      out.esai.sort((a, b) => a.nomor - b.nomor);
+      return out;
+    }
+
     async function parseKeyText(text) {
-      if (state.demo) { await new Promise((r) => setTimeout(r, 900)); return demoParse(text); }
+      const local = parseKeyLocal(text);
+      const localCount = local.pg.length + local.menjodohkan.length + local.esai.length;
+      if (local.pg.length >= 30 && local.menjodohkan.length >= 5 && local.esai.length >= 5) return local;
+      if (state.demo) {
+        await new Promise((r) => setTimeout(r, 900));
+        return localCount ? local : demoParse(text);
+      }
       const prompt = 'Kamu adalah asisten guru Indonesia yang teliti. Ekstrak KUNCI JAWABAN dari teks di bawah ini menjadi JSON terstruktur.\n\n' +
         'ATURAN:\n' +
         '- pg: array of {nomor:number, kunci:string}. Isi hanya soal pilihan ganda; kunci berupa huruf pilihan (A/B/C/D/E).\n' +
@@ -792,7 +885,10 @@
         'TEKS KUNCI JAWABAN:\n---\n' + text.slice(0, 60000) + '\n---';
       const data = await geminiRequest(prompt, null, true);
       const out = emptyKey();
-      ['pg', 'menjodohkan', 'esai'].forEach((g) => { if (Array.isArray(data[g])) out[g] = data[g]; });
+      ['pg', 'menjodohkan', 'esai'].forEach((g) => {
+        const ai = Array.isArray(data[g]) ? data[g] : [];
+        out[g] = local[g].length ? local[g] : ai;
+      });
       return out;
     }
 
