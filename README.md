@@ -21,8 +21,9 @@ Library **Mammoth.js** dipakai untuk mengekstrak teks kunci jawaban dari file `.
    Tabel kunci yang muncul bisa disunting manual (tambah/hapus baris, ubah nomor, kunci, dan bobot esai).
 4. **Step 2** – buka kamera belakang (overlay bingkai panduan) atau upload JPG/PNG, isi Nama & Kelas.
 5. **Step 3** – AI membaca LJK; indikator tahapan menampilkan progres OMR → OCR → Grading.
-6. **Step 4** – lihat ringkasan & rincian, lalu **Simpan ke Daftar Nilai** dan/atau **Export CSV**.
-7. **Template LJK** – tombol di navbar/ sidebar membuka halaman cetak A4 berisi 40 PG, 10 Menjodohkan, dan 10 Esai.
+6. **Step 4** – lihat ringkasan & rincian, lalu **Simpan ke Daftar Nilai** dan/atau **Export Excel**.
+7. **Export Excel** menghasilkan `.xlsx` dengan sheet `Deskripsi` dan satu sheet per kelas, kolomnya mengikuti format nilai ASTS sekolah
+   (`No`, `Nama Peserta Didik`, `NILAI FORMATIF` → `TP 2/3/4`, `NA (F)`, `NILAI SUMATIF` → `1/2/3/4`, `NA (S)`, `NILAI RAPOR`).
 
 > **Catatan kamera:** `getUserMedia` hanya bekerja di `https://` atau `http://localhost`. Jika dibuka lewat `file://`,
 > gunakan tombol upload gambar. Tombol **Mode Demo** di menu API Key menyimulasikan seluruh alur tanpa koneksi API.
@@ -84,7 +85,8 @@ Setiap `git push` setelahnya otomatis redeploy.
 - **Parser lokal untuk template kunci sekolah:** kunci `.docx` dengan tabel `No | Kunci` 4 kolom, bagian Menjodohkan (kunci boleh huruf di luar A–E seperti H/M/J), dan rubrik Uraian (`Soal No. … (Skor maksimal 4)` atau tabel `No. Soal | Pokok-Pokok Jawaban | Skor`) kini terbaca otomatis menjadi 40 PG + 10 Menjodohkan + 10 Esai dengan bobot 4, **tanpa perlu API key** (juga berjalan di Mode Demo). Format lain tetap didukung lewat Gemini.
 - **Logika koreksi lebih kuat:** pencocokan jawaban objektif kini mengenali `"B"`, `"(B)"`, `"Jawaban: C"`, dan `"bulatan D"` tanpa false positive; nomor yang tidak dikembalikan AI otomatis ditandai SALAH dengan catatan; nomor duplikat pada kunci dibuang otomatis.
 - **Statistik rekap:** kartu Jumlah Siswa, Rata-rata, Tertinggi, dan Terendah.
-- **Filter rekap:** cari nama/NIS dan pilih kelas; ekspor CSV mengikuti filter aktif.
+- **Export .xlsx sesuai format sekolah:** tombol **Export Excel** membuat workbook berisi sheet `Deskripsi` (interval & kode nilai) dan sheet per kelas dengan struktur header template ASTS. Nilai koreksi diisi pada kolom `1` (PG), `2` (Menjodohkan), `3` (Esai), `NA (S)`, dan `NILAI RAPOR`. Ekspor mengikuti filter rekap aktif.
+- **Template LJK dihapus:** tombol cetak template LJK tidak lagi tersedia.
 - **Rincian tersimpan:** setiap baris rekap punya tombol **Detail** berisi jawaban siswa vs kunci per nomor, plus tombol **Export CSV Detail**.
 - **CSV lebih lengkap:** kolom PG Benar/Salah dan Menjodohkan Benar/Salah kini terisi (sebelumnya kosong untuk data lama).
 - **UI:** rincian PG/MJ dua kolom pada layar lebar, indikator demo di rekap, penanganan blokiran Gemini (`promptFeedback`).
