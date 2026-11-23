@@ -87,6 +87,7 @@ Setiap `git push` setelahnya otomatis redeploy.
 - **Statistik rekap:** kartu Jumlah Siswa, Rata-rata, Tertinggi, dan Terendah.
 - **Export .xlsx sesuai format sekolah:** tombol **Export Excel** menghasilkan sheet `Deskripsi` dengan 3 kolom (`Interval | Kriteria | Deskripsi`, kriteria: `Belum Mampu`, `Mampu`, `Sangat Mampu`) untuk kelas X dan XI, plus empat sheet tetap: `X TKJ PUTRA`, `X TKJ PUTRI`, `XI TKJ PUTRA`, `XI TKJ PUTRI` (KKM berturut-turut 70, 70, 72, 72). Kelas lain tidak diekspor. Nilai koreksi masuk ke kolom `1` (PG), `2` (Menjodohkan), `3` (Esai), `NA (S)`, dan `NILAI RAPOR`.
 - **Template LJK dihapus:** tombol cetak template LJK tidak lagi tersedia.
+- **Tombol Hapus Kunci:** di bawah tabel kunci, menghapus seluruh kunci (teks hasil ekstraksi `.docx`, tabel PG/MJ/Esai, dan data tersimpan di browser), lalu kembali ke Step 1 setelah konfirmasi.
 - **Rincian tersimpan:** setiap baris rekap punya tombol **Detail** berisi jawaban siswa vs kunci per nomor, plus tombol **Export CSV Detail**.
 - **CSV lebih lengkap:** kolom PG Benar/Salah dan Menjodohkan Benar/Salah kini terisi (sebelumnya kosong untuk data lama).
 - **UI:** rincian PG/MJ dua kolom pada layar lebar, indikator demo di rekap, penanganan blokiran Gemini (`promptFeedback`).
