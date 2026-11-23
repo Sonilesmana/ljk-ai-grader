@@ -685,13 +685,20 @@
     }
 
     function friendlyError(status, msg) {
-      const m = String(msg || '');
-      if (status === 400) return 'Permintaan ditolak Gemini (400). Periksa ukuran gambar atau format JSON kunci. ' + m.slice(0, 160);
-      if (status === 401 || status === 403) return 'API Key tidak valid atau tidak memiliki akses. Buka menu API Key dan periksa kunci Anda.';
-      if (status === 404) return 'Model tidak ditemukan (' + state.model + '). Pilih model lain di menu API Key.';
-      if (status === 429) return 'Kuota / rate limit Gemini terlalu penuh. Tunggu sebentar atau gunakan model flash-lite.';
-      if (status >= 500) return 'Server Gemini sedang bermasalah (' + status + '). Coba lagi beberapa saat.';
-      if (/fetch|network|failed/i.test(m)) return 'Tidak dapat terhubung ke Gemini. Periksa koneksi internet Anda.';
+      const m = String(msg || '').replace(/\s+/g, ' ').trim();
+      const detail = m ? ' Detail Google: ' + m.slice(0, 260) : '';
+      if (/API[_ ]?key[_ ]?(not[_ ]?valid|invalid|expired)|API_KEY_INVALID/i.test(m))
+        return 'API Key tidak valid / sudah dicabut. Buat key baru di https://aistudio.google.com/apikey lalu simpan lagi.' + detail;
+      if (/referrer|HTTP_REFERRER|origin.*block|API_KEY_HTTP_REFERRER_BLOCKED/i.test(m))
+        return 'API Key diblokir oleh Application restrictions. Di AI Studio → kunci → Application restrictions, pilih None (atau HTTP referrers dengan domain situs ini), lalu coba lagi.' + detail;
+      if (/SERVICE_DISABLED|API not enabled|permission denied/i.test(m))
+        return 'Gemini API belum aktif untuk project tersebut. Aktifkan di Google Cloud Console → APIs & Services → Library → Gemini API.' + detail;
+      if (status === 400) return 'Permintaan ditolak Gemini (400). Periksa model & format permintaan.' + detail;
+      if (status === 401 || status === 403) return 'API Key ditolak Google (' + status + '). Periksa: (1) kunci masih aktif di AI Studio, (2) Application restrictions = None atau HTTP referrers sesuai domain ini, (3) Gemini API aktif untuk project tersebut.' + detail;
+      if (status === 404) return 'Model tidak ditemukan (' + state.model + '). Pilih model lain di menu API Key.' + detail;
+      if (status === 429) return 'Kuota / rate limit Gemini terlalu penuh. Tunggu sebentar atau gunakan model flash-lite.' + detail;
+      if (status >= 500) return 'Server Gemini sedang bermasalah (' + status + '). Coba lagi beberapa saat.' + detail;
+      if (/fetch|network|failed/i.test(m)) return 'Tidak dapat terhubung ke Gemini. Periksa koneksi internet Anda.' + detail;
       return m || 'Terjadi kesalahan yang tidak diketahui.';
     }
 
@@ -919,8 +926,8 @@
         box.className = 'mt-4 rounded-xl bg-emerald-50 px-3 py-2.5 text-xs text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300';
         box.textContent = '✓ Koneksi berhasil. Model ' + model + ' siap dipakai.';
       } catch (e) {
-        box.className = 'mt-4 rounded-xl bg-rose-50 px-3 py-2.5 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-300';
-        box.textContent = '✗ ' + e.message;
+        box.className = 'mt-4 whitespace-pre-line break-words rounded-xl bg-rose-50 px-3 py-2.5 text-xs leading-relaxed text-rose-700 dark:bg-rose-950/30 dark:text-rose-300';
+        box.textContent = '✗ ' + e.message + '\nKelola kunci: https://aistudio.google.com/apikey';
       } finally { state.apiKey = oldKey; state.model = oldModel; }
     });
 
