@@ -1694,41 +1694,49 @@
       const rows = exportRows();
       if (!rows.length) { toast('Belum ada nilai untuk diekspor.', 'info'); return; }
 
-      const isXI = rows.some((r) => /\bXI\b|\b11\b/i.test(String(r.kelas)));
-      const interval = isXI ? ['0-71', '72-89', '90-100'] : ['0-69', '70-89', '90-100'];
-      const kode = isXI ? [38, 39, 40] : [35, 36, 37];
+      const targetKelas = [
+        { name: 'X TKJ PUTRA', kkm: 70, interval: ['0-69', '70-89', '90-100'] },
+        { name: 'X TKJ PUTRI', kkm: 70, interval: ['0-69', '70-89', '90-100'] },
+        { name: 'XI TKJ PUTRA', kkm: 72, interval: ['0-71', '72-89', '90-100'] },
+        { name: 'XI TKJ PUTRI', kkm: 72, interval: ['0-71', '72-89', '90-100'] }
+      ];
+      const kriteria = ['Belum Mampu', 'Mampu', 'Sangat Mampu'];
+      const deskripsi = [
+        'Belum mencapai kompetensi minimum; memerlukan bimbingan dan pengulangan materi.',
+        'Mencapai kompetensi sesuai KKM; menunjukkan pemahaman yang memadai.',
+        'Menguasai materi secara menyeluruh dan mampu menerapkannya dengan baik.'
+      ];
       const wb = XLSX.utils.book_new();
 
-      /* Sheet Deskripsi: B9/C9 dan B11:C13 mengikuti template asli */
+      /* Sheet Deskripsi: 3 kolom (Interval | Kriteria | Deskripsi), kelas X dan XI */
       const desc = [];
-      desc[8] = ['', 'INTERVAL', 28];
-      desc[10] = ['', interval[0], kode[0]];
-      desc[11] = ['', interval[1], kode[1]];
-      desc[12] = ['', interval[2], kode[2]];
+      desc[8] = ['', 'INTERVAL', 'KRITERIA', 'DESKRIPSI'];
+      desc[9] = ['', 'KELAS X (KKM 70)'];
+      for (let i = 0; i < 3; i++) desc[10 + i] = ['', targetKelas[0].interval[i], kriteria[i], deskripsi[i]];
+      desc[13] = ['', 'KELAS XI (KKM 72)'];
+      for (let i = 0; i < 3; i++) desc[14 + i] = ['', targetKelas[2].interval[i], kriteria[i], deskripsi[i]];
       const wsDesc = XLSX.utils.aoa_to_sheet(desc);
       wsDesc['!merges'] = [
-        { s: { r: 8, c: 1 }, e: { r: 9, c: 2 } }, { s: { r: 8, c: 3 }, e: { r: 9, c: 9 } },
-        { s: { r: 10, c: 1 }, e: { r: 10, c: 2 } }, { s: { r: 10, c: 3 }, e: { r: 10, c: 9 } },
-        { s: { r: 11, c: 1 }, e: { r: 11, c: 2 } }, { s: { r: 11, c: 3 }, e: { r: 11, c: 9 } },
-        { s: { r: 12, c: 1 }, e: { r: 12, c: 2 } }, { s: { r: 12, c: 3 }, e: { r: 12, c: 9 } }
+        { s: { r: 9, c: 1 }, e: { r: 9, c: 3 } },
+        { s: { r: 13, c: 1 }, e: { r: 13, c: 3 } }
       ];
-      wsDesc['!cols'] = [{ wch: 3 }, { wch: 16 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+      wsDesc['!cols'] = [{ wch: 3 }, { wch: 18 }, { wch: 18 }, { wch: 78 }];
       XLSX.utils.book_append_sheet(wb, wsDesc, 'Deskripsi');
 
-      /* Satu sheet per kelas, header mengikuti template ASTS */
-      const groups = {};
-      rows.forEach((r) => { const k = String(r.kelas || 'Tanpa Kelas').trim(); (groups[k] = groups[k] || []).push(r); });
-      Object.keys(groups).forEach((kelas) => {
+      /* Empat sheet kelas tetap dibuat; kelas lain tidak ikut diekspor */
+      const normKelas = (s) => String(s || '').trim().toUpperCase().replace(/\s+/g, ' ').replace(/^10\b/, 'X').replace(/^11\b/, 'XI');
+      targetKelas.forEach((target) => {
+        const data = rows.filter((r) => normKelas(r.kelas) === normKelas(target.name));
         const aoa = [];
         for (let i = 0; i < 7; i++) aoa[i] = ['', 11 + i, '', 11 + i];
         aoa[9] = ['', 'DAFTAR NILAI ASESMEN SUMATIF TENGAH SEMESTER (ASTS) GANJIL'];
         aoa[10] = ['', 'TAHUN AJARAN 2026/2027'];
         aoa[12] = ['', 'Mata Pelajaran', ''];
-        aoa[13] = ['', 'KKM', 40];
+        aoa[13] = ['', 'KKM', target.kkm];
         aoa[15] = ['', 'No', 'Nama Peserta Didik', 'NILAI FORMATIF', '', '', '', '', 'NILAI SUMATIF', '', '', '', '', '', 'NILAI RAPOR'];
         aoa[16] = ['', '', '', '', 'TP 2', 'TP 3', 'TP 4', 'NA (F)', '1', '2', '3', '4', 'NA (S)', '', ''];
-        groups[kelas].forEach((r, i) => {
-          aoa[17 + i] = ['', r.no, r.nama, '', '', '', '', '', r.pg, r.mj, r.esai, '', r.nilai, '', r.nilai];
+        data.forEach((r, i) => {
+          aoa[17 + i] = ['', i + 1, r.nama, '', '', '', '', '', r.pg, r.mj, r.esai, '', r.nilai, '', r.nilai];
         });
         const ws = XLSX.utils.aoa_to_sheet(aoa);
         ws['!merges'] = [
@@ -1739,8 +1747,7 @@
         ];
         ws['!cols'] = [{ wch: 3 }, { wch: 6 }, { wch: 34 }, { wch: 11 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 },
           { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }];
-        const name = kelas.replace(/[\\\/\?\*\[\]:]/g, '-').slice(0, 31) || 'Kelas';
-        XLSX.utils.book_append_sheet(wb, ws, name);
+        XLSX.utils.book_append_sheet(wb, ws, target.name);
       });
 
       XLSX.writeFile(wb, 'format-nilai-asts-' + new Date().toISOString().slice(0, 10) + '.xlsx');
