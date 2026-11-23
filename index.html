@@ -500,14 +500,17 @@
           <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="btn btn-primary !px-3 !py-1.5 text-xs">Buka AI Studio ↗</a>
           <a href="https://ai.google.dev/gemini-api/docs/rate-limits" target="_blank" rel="noopener" class="text-[11px] font-bold text-indigo-700 hover:underline dark:text-indigo-300">Lihat kuota gratis ↗</a>
         </div>
-        <p class="mt-2.5 border-t border-indigo-200/70 pt-2 text-[10px] leading-relaxed text-indigo-800/80 dark:border-indigo-800/60 dark:text-indigo-300/80">Kuota gratis berlaku per akun/project — tidak ada key bersama atau unlimited. Untuk kuota lebih lega, pilih model <b>gemini-2.5-flash-lite</b>. Jangan bagikan kunci Anda ke orang lain.</p>
+        <p class="mt-2.5 border-t border-indigo-200/70 pt-2 text-[10px] leading-relaxed text-indigo-800/80 dark:border-indigo-800/60 dark:text-indigo-300/80">Kuota gratis berlaku per akun/project — tidak ada key bersama atau unlimited. Model <b>gemini-3.5-flash-lite</b> adalah pilihan cepat &amp; hemat. Model 2.5 sudah tidak tersedia untuk key baru. Jangan bagikan kunci Anda ke orang lain.</p>
       </div>
 
       <label class="label mt-4" for="model-select">Model AI</label>
       <select id="model-select" class="input">
-        <option value="gemini-2.5-flash">gemini-2.5-flash — cepat &amp; hemat (direkomendasikan)</option>
-        <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite — paling ringan</option>
-        <option value="gemini-2.5-pro">gemini-2.5-pro — paling akurat</option>
+        <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite — cepat &amp; hemat (direkomendasikan)</option>
+        <option value="gemini-4-hydrogen">gemini-4-hydrogen — paling mampu (terbaru)</option>
+        <option value="gemini-4-carbon">gemini-4-carbon — penalaran terdalam</option>
+        <option value="gemini-3.8-flash">gemini-3.8-flash — akurat</option>
+        <option value="gemini-3.6-flash">gemini-3.6-flash — seimbang</option>
+        <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite — paling ringan</option>
       </select>
 
       <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-500/10">
@@ -576,11 +579,17 @@
       { n: 4, t: 'Hasil & Rekap', s: 'nilai + CSV' }
     ];
     const emptyKey = () => ({ pg: [], menjodohkan: [], esai: [] });
+    const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
+    const LEGACY_MODELS = {
+      'gemini-2.5-flash': 'gemini-3.5-flash-lite',
+      'gemini-2.5-flash-lite': 'gemini-3.5-flash-lite',
+      'gemini-2.5-pro': 'gemini-3.8-flash'
+    };
 
     const state = {
       step: 1, maxStep: 1,
       apiKey: safeGet(STORE.key, ''),
-      model: safeGet(STORE.model, 'gemini-2.5-flash'),
+      model: safeGet(STORE.model, DEFAULT_MODEL),
       demo: safeGet(STORE.demo, '0') === '1',
       bobotObjektif: num(safeGet(STORE.bobot, '1'), 1),
       keyData: safeJson(STORE.keyData, emptyKey()),
@@ -600,6 +609,12 @@
     if (!state.keyData || typeof state.keyData !== 'object') state.keyData = emptyKey();
     ['pg', 'menjodohkan', 'esai'].forEach((g) => { if (!Array.isArray(state.keyData[g])) state.keyData[g] = []; });
     if (!Array.isArray(state.rekap)) state.rekap = [];
+
+    /* Model 2.5 sudah deprecated / 404 untuk key baru → migrasi ke model aktif */
+    const modelValues = Array.from($('model-select').options).map((o) => o.value);
+    if (LEGACY_MODELS[state.model]) state.model = LEGACY_MODELS[state.model];
+    if (!modelValues.includes(state.model)) state.model = DEFAULT_MODEL;
+    safeSet(STORE.model, state.model);
 
     /* ---------------------------- UI helpers ---------------------------- */
     function toast(msg, type) {
@@ -695,7 +710,7 @@
         return 'Gemini API belum aktif untuk project tersebut. Aktifkan di Google Cloud Console → APIs & Services → Library → Gemini API.' + detail;
       if (status === 400) return 'Permintaan ditolak Gemini (400). Periksa model & format permintaan.' + detail;
       if (status === 401 || status === 403) return 'API Key ditolak Google (' + status + '). Periksa: (1) kunci masih aktif di AI Studio, (2) Application restrictions = None atau HTTP referrers sesuai domain ini, (3) Gemini API aktif untuk project tersebut.' + detail;
-      if (status === 404) return 'Model tidak ditemukan (' + state.model + '). Pilih model lain di menu API Key.' + detail;
+      if (status === 404) return 'Model tidak tersedia (' + state.model + '). Model Gemini 2.5 sudah deprecated untuk key baru — pilih gemini-3.5-flash-lite (atau model lain yang tersedia) di menu API Key, lalu Simpan.' + detail;
       if (status === 429) return 'Kuota / rate limit Gemini terlalu penuh. Tunggu sebentar atau gunakan model flash-lite.' + detail;
       if (status >= 500) return 'Server Gemini sedang bermasalah (' + status + '). Coba lagi beberapa saat.' + detail;
       if (/fetch|network|failed/i.test(m)) return 'Tidak dapat terhubung ke Gemini. Periksa koneksi internet Anda.' + detail;
@@ -720,7 +735,7 @@
       const generationConfig = { temperature: 0.15, maxOutputTokens: 8192 };
       // responseSchema tidak dipakai agar kompatibel lintas model; MIME JSON memaksa keluaran terstruktur.
       if (wantJson !== false) generationConfig.responseMimeType = 'application/json';
-      if (/flash/i.test(state.model)) generationConfig.thinkingConfig = { thinkingBudget: 0 };
+      // thinkingBudget sudah tidak didukung Gemini 3/4; gemini-3.5-flash-lite default-nya minimal.
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 180000);
       let res, data;
