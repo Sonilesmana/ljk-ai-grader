@@ -1,8 +1,7 @@
 # LJK Vision AI
 
-Aplikasi koreksi Lembar Jawaban Siswa otomatis: **OMR** (bulatan/tanda silang), **OCR** (tulisan tangan esai),
-dan **AI Grading semantik** dengan Gemini Vision. Antarmuka tetap SPA (HTML + Tailwind + JavaScript murni),
-didampingi **backend serverless Vercel** di `api/gemini.js` untuk menyimpan API key dan membatasi akses.
+Single-Page Application (HTML + Tailwind CSS + JavaScript murni) untuk koreksi Lembar Jawaban Siswa otomatis:
+**OMR** (bulatan/tanda silang), **OCR** (tulisan tangan esai), dan **AI Grading semantik** menggunakan Gemini Vision.
 Library **Mammoth.js** dipakai untuk mengekstrak teks kunci jawaban dari file `.docx`.
 
 ## Cara menjalankan
@@ -16,31 +15,23 @@ Library **Mammoth.js** dipakai untuk mengekstrak teks kunci jawaban dari file `.
 
    lalu buka `http://localhost:8000`.
 
-2. Siapkan backend sekali di Vercel: **Project Settings → Environment Variables**, tambahkan
-   `GEMINI_API_KEY` (kunci dari [Google AI Studio](https://aistudio.google.com/apikey)) dan `ACCESS_CODE`
-   (kode rahasia pilihan Anda), lalu **Redeploy**. Keduanya tidak pernah dikirim ke browser.
-3. Klik **Koneksi AI**, masukkan **Kode Akses** yang sama, pilih model `gemini-3.5-flash-lite`
-   (cepat & hemat), **Simpan**, lalu **Uji Koneksi**. Model lain yang didukung: `gemini-4-hydrogen`,
-   `gemini-4-carbon`, `gemini-3.8-flash`, `gemini-3.6-flash`, `gemini-3.1-flash-lite`.
-   Kode akses hanya disimpan di `sessionStorage` (hilang saat tab ditutup). Model 2.5 yang deprecated otomatis diganti.
-4. **Step 1** – upload kunci `.docx` atau tempel teks, lalu klik **Ekstrak & Parse dengan AI**.
+2. Klik **API Key**, masukkan kunci dari [Google AI Studio](https://aistudio.google.com/apikey), pilih model
+   `gemini-3.5-flash-lite` (direkomendasikan; cepat & hemat), lalu **Simpan**. Kunci hanya disimpan di `localStorage` browser (tanpa backend).
+   Model lama `gemini-2.5-flash` / `gemini-2.5-pro` sudah deprecated dan otomatis diganti saat halaman dibuka.
+3. **Step 1** – upload kunci `.docx` atau tempel teks, lalu klik **Ekstrak & Parse dengan AI**.
    Tabel kunci yang muncul bisa disunting manual (tambah/hapus baris, ubah nomor, kunci, dan bobot esai).
-5. **Step 2** – buka kamera belakang (overlay bingkai panduan) atau upload JPG/PNG, isi Nama & Kelas.
-6. **Step 3** – AI membaca LJK; indikator tahapan menampilkan progres OMR → OCR → Grading.
-7. **Step 4** – lihat ringkasan & rincian, lalu **Simpan ke Daftar Nilai** dan/atau **Export Excel**.
-8. **Export Excel** menghasilkan `.xlsx` dengan sheet `Deskripsi` dan satu sheet per kelas, kolomnya mengikuti format nilai ASTS sekolah
+4. **Step 2** – buka kamera belakang (overlay bingkai panduan) atau upload JPG/PNG, isi Nama & Kelas.
+5. **Step 3** – AI membaca LJK; indikator tahapan menampilkan progres OMR → OCR → Grading.
+6. **Step 4** – lihat ringkasan & rincian, lalu **Simpan ke Daftar Nilai** dan/atau **Export Excel**.
+7. **Export Excel** menghasilkan `.xlsx` dengan sheet `Deskripsi` dan satu sheet per kelas, kolomnya mengikuti format nilai ASTS sekolah
    (`No`, `Nama Peserta Didik`, `NILAI FORMATIF` → `TP 2/3/4`, `NA (F)`, `NILAI SUMATIF` → `1/2/3/4`, `NA (S)`, `NILAI RAPOR`).
 
 > **Catatan kamera:** `getUserMedia` hanya bekerja di `https://` atau `http://localhost`. Jika dibuka lewat `file://`,
-> gunakan tombol upload gambar. Tombol **Mode Demo** di menu **Koneksi AI** menyimulasikan seluruh alur tanpa backend.
-> Mode Demo juga dipakai untuk parsing kunci lokal, sehingga template `.docx` sekolah tetap terbaca tanpa API key.
+> gunakan tombol upload gambar. Tombol **Mode Demo** di menu API Key menyimulasikan seluruh alur tanpa koneksi API.
 
 ## Teknis singkat
 
-- Browser → `POST /api/gemini` (berisi `accessCode`, `model`, `prompt`, opsional `image`) → server →
-  `generativelanguage.googleapis.com/v1beta/models/<model>:generateContent` dengan header `x-goog-api-key`.
-- Backend memvalidasi kode akses lebih dulu, membatasi model yang boleh dipakai, membatasi ukuran body 8 MB,
-  dan menerjemahkan error Google ke pesan Indonesia. API key tidak pernah masuk ke browser/log URL.
+- Endpoint: `generativelanguage.googleapis.com/v1beta/models/<model>:generateContent`
 - Parsing kunci dan koreksi memakai `responseMimeType: "application/json"` dan suhu rendah. Model default
   `gemini-3.5-flash-lite` sudah berpikir minimal secara bawaan (tidak memakai `thinkingBudget` yang sudah usang).
 - Gambar dikompres ke maks. 1600 px (JPEG q=0.86) sebelum dikirim.
@@ -86,18 +77,12 @@ Setiap `git push` setelahnya otomatis redeploy.
 ### Setelah online
 
 - Kamera belakang otomatis bisa dipakai karena Vercel menyediakan **HTTPS**.
-- Wajib: di **Project Settings → Environment Variables** tambahkan `GEMINI_API_KEY` dan `ACCESS_CODE`
-  untuk **Production** (dan Preview bila ingin menguji), lalu **Redeploy**. Tanpa keduanya, tombol Uji Koneksi
-  akan memberi pesan "Backend belum dikonfigurasi".
-- Pengguna cukup membuka situs dan memasukkan **Kode Akses** di menu **Koneksi AI**. API key tidak perlu
-  dibagikan ke siapa pun dan tidak tersimpan di browser.
-- Karena kunci dipakai server, pembatasan *HTTP referrers* tidak diperlukan; cukup jaga kerahasiaan `ACCESS_CODE`.
-  Jika kode bocor, ganti nilai `ACCESS_CODE` di Vercel lalu redeploy.
-- Jika mengubah file, deploy ulang otomatis lewat `git push` ke repository GitHub yang sudah terhubung.
+- Masukkan API Key Gemini di menu **API Key** (tersimpan di browser masing-masing pengunjung, bukan di server).
+- Disarankan membatasi API Key di Google Cloud Console → *Credentials* → kunci tersebut → **Application restrictions: HTTP referrers** → isi domain Vercel Anda, agar tidak disalahgunakan di situs lain.
+- Jika mengubah file, deploy ulang: drag folder lagi, `vercel --prod`, atau `git push`.
 
 ## Pembaruan terbaru
 
-- **Backend serverless & API key di server:** browser tidak lagi menyimpan/mengirim API key. Semua panggilan Gemini lewat `/api/gemini` yang dilindungi `ACCESS_CODE`. Kode akses tersimpan di `sessionStorage`, dan API key lama di `localStorage` otomatis dihapus.
 - **Parser lokal untuk template kunci sekolah:** kunci `.docx` dengan tabel `No | Kunci` 4 kolom, bagian Menjodohkan (kunci boleh huruf di luar A–E seperti H/M/J), dan rubrik Uraian (`Soal No. … (Skor maksimal 4)` atau tabel `No. Soal | Pokok-Pokok Jawaban | Skor`) kini terbaca otomatis menjadi 40 PG + 10 Menjodohkan + 10 Esai dengan bobot 4, **tanpa perlu API key** (juga berjalan di Mode Demo). Format lain tetap didukung lewat Gemini.
 - **Logika koreksi lebih kuat:** pencocokan jawaban objektif kini mengenali `"B"`, `"(B)"`, `"Jawaban: C"`, dan `"bulatan D"` tanpa false positive; nomor yang tidak dikembalikan AI otomatis ditandai SALAH dengan catatan; nomor duplikat pada kunci dibuang otomatis.
 - **Statistik rekap:** kartu Jumlah Siswa, Rata-rata, Tertinggi, dan Terendah.
@@ -112,7 +97,6 @@ Setiap `git push` setelahnya otomatis redeploy.
 
 ## File
 
-- `index.html` — antarmuka & logika sisi browser
-- `api/gemini.js` — backend serverless Vercel (proxy Gemini + validasi kode akses)
-- `vercel.json` — konfigurasi deploy Vercel
+- `index.html` — seluruh aplikasi (struktur, gaya, dan logika)
+- `vercel.json` — konfigurasi deploy statis Vercel
 - `README.md` — panduan ini
