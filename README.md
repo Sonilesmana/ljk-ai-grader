@@ -16,7 +16,8 @@ Library **Mammoth.js** dipakai untuk mengekstrak teks kunci jawaban dari file `.
    lalu buka `http://localhost:8000`.
 
 2. Klik **API Key**, masukkan kunci dari [Google AI Studio](https://aistudio.google.com/apikey), pilih model
-   `gemini-2.5-flash`, lalu **Simpan**. Kunci hanya disimpan di `localStorage` browser (tanpa backend).
+   `gemini-3.5-flash-lite` (direkomendasikan; cepat & hemat), lalu **Simpan**. Kunci hanya disimpan di `localStorage` browser (tanpa backend).
+   Model lama `gemini-2.5-flash` / `gemini-2.5-pro` sudah deprecated dan otomatis diganti saat halaman dibuka.
 3. **Step 1** – upload kunci `.docx` atau tempel teks, lalu klik **Ekstrak & Parse dengan AI**.
    Tabel kunci yang muncul bisa disunting manual (tambah/hapus baris, ubah nomor, kunci, dan bobot esai).
 4. **Step 2** – buka kamera belakang (overlay bingkai panduan) atau upload JPG/PNG, isi Nama & Kelas.
@@ -31,8 +32,8 @@ Library **Mammoth.js** dipakai untuk mengekstrak teks kunci jawaban dari file `.
 ## Teknis singkat
 
 - Endpoint: `generativelanguage.googleapis.com/v1beta/models/<model>:generateContent`
-- Parsing kunci dan koreksi memakai `responseMimeType: "application/json"`, suhu rendah, dan `thinkingBudget: 0`
-  pada model Flash agar cepat.
+- Parsing kunci dan koreksi memakai `responseMimeType: "application/json"` dan suhu rendah. Model default
+  `gemini-3.5-flash-lite` sudah berpikir minimal secara bawaan (tidak memakai `thinkingBudget` yang sudah usang).
 - Gambar dikompres ke maks. 1600 px (JPEG q=0.86) sebelum dikirim.
 - Nilai akhir dihitung di browser: `(benar × bobot objektif + Σ skor esai) / total poin maksimal × 100`.
 - Status esai: `BENAR` ≥ 90% bobot, `PARTIAL` untuk skor di antaranya, `SALAH` jika 0.
