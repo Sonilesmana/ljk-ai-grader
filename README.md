@@ -1,5 +1,8 @@
 # LJK Vision AI
 
+> Catatan: versi ini kembali ke aplikasi tanpa backend. API key disimpan di browser (sesuai pengaturan Anda).
+> Kode `api/gemini.js` sudah dihapus dari repository.
+
 Single-Page Application (HTML + Tailwind CSS + JavaScript murni) untuk koreksi Lembar Jawaban Siswa otomatis:
 **OMR** (bulatan/tanda silang), **OCR** (tulisan tangan esai), dan **AI Grading semantik** menggunakan Gemini Vision.
 Library **Mammoth.js** dipakai untuk mengekstrak teks kunci jawaban dari file `.docx`.
