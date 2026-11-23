@@ -81,6 +81,7 @@ Setiap `git push` setelahnya otomatis redeploy.
 
 ## Pembaruan terbaru
 
+- **Parser lokal untuk template kunci sekolah:** kunci `.docx` dengan tabel `No | Kunci` 4 kolom, bagian Menjodohkan (kunci boleh huruf di luar A–E seperti H/M/J), dan rubrik Uraian (`Soal No. … (Skor maksimal 4)` atau tabel `No. Soal | Pokok-Pokok Jawaban | Skor`) kini terbaca otomatis menjadi 40 PG + 10 Menjodohkan + 10 Esai dengan bobot 4, **tanpa perlu API key** (juga berjalan di Mode Demo). Format lain tetap didukung lewat Gemini.
 - **Logika koreksi lebih kuat:** pencocokan jawaban objektif kini mengenali `"B"`, `"(B)"`, `"Jawaban: C"`, dan `"bulatan D"` tanpa false positive; nomor yang tidak dikembalikan AI otomatis ditandai SALAH dengan catatan; nomor duplikat pada kunci dibuang otomatis.
 - **Statistik rekap:** kartu Jumlah Siswa, Rata-rata, Tertinggi, dan Terendah.
 - **Filter rekap:** cari nama/NIS dan pilih kelas; ekspor CSV mengikuti filter aktif.
