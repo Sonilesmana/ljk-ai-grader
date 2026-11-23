@@ -89,7 +89,7 @@
         <span id="demo-badge" class="chip hidden bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">MODE DEMO</span>
         <button id="btn-api" class="btn btn-ghost px-3 py-2">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="m15 7 5 5-5 5M9 17l-5-5 5-5"/></svg>
-          <span class="hidden sm:inline">Koneksi AI</span>
+          <span class="hidden sm:inline">API Key</span>
           <span id="api-dot" class="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600"></span>
         </button>
         <button id="btn-theme" class="btn btn-ghost h-10 w-10 px-0" title="Ganti tema">
@@ -422,7 +422,7 @@
         </div>
 
         <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-[11px] leading-relaxed text-amber-800 dark:border-amber-900/50 dark:bg-amber-500/10 dark:text-amber-300">
-          <strong>Privasi:</strong> API key disimpan di server (Vercel), tidak pernah di browser. Kode akses hanya tersimpan selama tab ini terbuka. Rekap &amp; kunci jawaban tetap lokal di browser.
+          <strong>Privasi:</strong> API Key dan rekap hanya disimpan di <code>localStorage</code> browser ini. Tidak ada backend. Hapus kunci kapan saja lewat menu API Key.
         </div>
       </aside>
     </div>
@@ -475,32 +475,32 @@
     <div class="card w-full max-w-md animate-pop p-6 shadow-2xl">
       <div class="mb-5 flex items-start gap-3">
         <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M21 2 2 21m9-9 4 4M15 5l4 4M11 3l2 2m4 12 2 2M3 11l2 2"/></svg></div>
-        <div class="mr-auto"><h3 class="text-base font-bold">Koneksi AI</h3><p class="text-xs text-slate-500 dark:text-slate-400">API key disimpan aman di server</p></div>
+        <div class="mr-auto"><h3 class="text-base font-bold">Pengaturan Gemini API</h3><p class="text-xs text-slate-500 dark:text-slate-400">Kunci disimpan lokal di browser Anda</p></div>
         <button id="btn-close-api" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">✕</button>
       </div>
 
-      <label class="label" for="access-code-input">Kode Akses</label>
+      <label class="label" for="api-key-input">Google AI Studio API Key</label>
       <div class="relative">
-        <input id="access-code-input" type="password" autocomplete="off" spellcheck="false" class="input pr-16" placeholder="Masukkan kode akses" />
-        <button id="btn-toggle-code" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-bold text-slate-500 hover:text-indigo-600">TAMPIL</button>
+        <input id="api-key-input" type="password" autocomplete="off" spellcheck="false" class="input pr-12" placeholder="AIzaSy..." />
+        <button id="btn-toggle-key" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-bold text-slate-500 hover:text-indigo-600">TAMPIL</button>
       </div>
-      <p class="mt-1.5 text-[11px] text-slate-400">Kode akses hanya disimpan selama tab browser ini terbuka. API key tidak pernah disimpan di browser.</p>
+      <p class="mt-1.5 text-[11px] text-slate-400">Dapatkan gratis di <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">aistudio.google.com/apikey</a></p>
 
       <div class="mt-4 rounded-xl border border-indigo-200 bg-indigo-50/70 p-3.5 dark:border-indigo-900/60 dark:bg-indigo-500/10">
         <div class="flex items-center gap-2">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4 text-indigo-600 dark:text-indigo-400"><path d="M12 2 4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg>
-          <p class="text-xs font-bold text-indigo-900 dark:text-indigo-200">Lebih aman: API key tidak lagi di browser</p>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4 text-indigo-600 dark:text-indigo-400"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <p class="text-xs font-bold text-indigo-900 dark:text-indigo-200">Cara dapat API Key gratis (± 1 menit)</p>
         </div>
         <ol class="mt-2 space-y-1.5 text-[11px] leading-relaxed text-indigo-900/85 dark:text-indigo-200/80">
-          <li><b>1.</b> Admin mengatur <code class="rounded bg-indigo-100 px-1 dark:bg-indigo-900/50">GEMINI_API_KEY</code> dan <code class="rounded bg-indigo-100 px-1 dark:bg-indigo-900/50">ACCESS_CODE</code> di Vercel → Project Settings → Environment Variables.</li>
-          <li><b>2.</b> Setelah deploy ulang, masukkan <b>Kode Akses</b> yang sama di kolom atas.</li>
-          <li><b>3.</b> Pilih model, klik <b>Simpan</b>, lalu <b>Uji Koneksi</b>. Kunci AI tetap tersembunyi di server.</li>
+          <li><b>1.</b> Buka <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="font-bold underline">Google AI Studio</a> lalu login dengan akun Google Anda.</li>
+          <li><b>2.</b> Klik <b>Create API key</b> → pilih atau buat project → salin kunci <code class="rounded bg-indigo-100 px-1 dark:bg-indigo-900/50">AIza…</code>.</li>
+          <li><b>3.</b> Tempel di kolom atas, pilih model, lalu klik <b>Simpan</b>. Kunci hanya tersimpan di browser ini.</li>
         </ol>
         <div class="mt-3 flex flex-wrap items-center gap-3">
-          <a href="https://vercel.com/docs/environment-variables" target="_blank" rel="noopener" class="btn btn-primary !px-3 !py-1.5 text-xs">Panduan Environment Variable ↗</a>
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="btn btn-primary !px-3 !py-1.5 text-xs">Buka AI Studio ↗</a>
           <a href="https://ai.google.dev/gemini-api/docs/rate-limits" target="_blank" rel="noopener" class="text-[11px] font-bold text-indigo-700 hover:underline dark:text-indigo-300">Lihat kuota gratis ↗</a>
         </div>
-        <p class="mt-2.5 border-t border-indigo-200/70 pt-2 text-[10px] leading-relaxed text-indigo-800/80 dark:border-indigo-800/60 dark:text-indigo-300/80">Setiap permintaan browser dicek dulu kode aksesnya oleh server. Tanpa kode yang benar, kuota Gemini tidak bisa dipakai. Jangan bagikan kode akses ke orang lain.</p>
+        <p class="mt-2.5 border-t border-indigo-200/70 pt-2 text-[10px] leading-relaxed text-indigo-800/80 dark:border-indigo-800/60 dark:text-indigo-300/80">Kuota gratis berlaku per akun/project — tidak ada key bersama atau unlimited. Model <b>gemini-3.5-flash-lite</b> adalah pilihan cepat &amp; hemat. Model 2.5 sudah tidak tersedia untuk key baru. Jangan bagikan kunci Anda ke orang lain.</p>
       </div>
 
       <label class="label mt-4" for="model-select">Model AI</label>
@@ -524,7 +524,7 @@
         <button id="btn-test-api" class="btn btn-ghost flex-1">Uji Koneksi</button>
         <button id="btn-save-api" class="btn btn-primary flex-1">Simpan</button>
       </div>
-      <button id="btn-clear-api" class="mt-3 w-full text-center text-xs font-semibold text-rose-600 hover:underline dark:text-rose-400">Hapus Kode Akses dari browser</button>
+      <button id="btn-clear-api" class="mt-3 w-full text-center text-xs font-semibold text-rose-600 hover:underline dark:text-rose-400">Hapus API Key dari browser</button>
     </div>
   </div>
 
@@ -559,19 +559,13 @@
     const $ = (id) => document.getElementById(id);
     const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
     const STORE = {
-      model: 'ljkvision.model', theme: 'ljkvision.theme',
+      key: 'ljkvision.apiKey', model: 'ljkvision.model', theme: 'ljkvision.theme',
       rekap: 'ljkvision.rekap', keyData: 'ljkvision.keyData', demo: 'ljkvision.demo',
       bobot: 'ljkvision.bobot'
     };
-    const SESSION_CODE = 'ljkvision.accessCode';
-    const API_ENDPOINT = '/api/gemini';
 
     const safeGet = (k, fallback) => { try { const v = localStorage.getItem(k); return v === null ? fallback : v; } catch (e) { return fallback; } };
     const safeSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { console.warn('localStorage penuh', e); } };
-    const sessionGet = (k, fallback) => { try { const v = sessionStorage.getItem(k); return v === null ? fallback : v; } catch (e) { return fallback; } };
-    const sessionSet = (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) { console.warn('sessionStorage penuh', e); } };
-    /* Bersihkan API key lama yang dulu disimpan di browser */
-    try { localStorage.removeItem('ljkvision.apiKey'); } catch (e) { /* abaikan */ }
     const safeJson = (k, fallback) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } };
     const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const num = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
@@ -594,7 +588,7 @@
 
     const state = {
       step: 1, maxStep: 1,
-      accessCode: sessionGet(SESSION_CODE, ''),
+      apiKey: safeGet(STORE.key, ''),
       model: safeGet(STORE.model, DEFAULT_MODEL),
       demo: safeGet(STORE.demo, '0') === '1',
       bobotObjektif: num(safeGet(STORE.bobot, '1'), 1),
@@ -676,7 +670,7 @@
       $('side-image').textContent = state.image ? (state.image.name || 'Foto LJK') : 'Belum ada';
       $('side-rekap').textContent = state.rekap.length + ' siswa';
       $('rekap-count').textContent = state.rekap.length + ' siswa';
-      const connected = state.demo || !!state.accessCode;
+      const connected = state.demo || !!state.apiKey;
       $('side-api').textContent = state.demo ? 'Mode Demo' : connected ? 'Tersambung' : 'Belum diatur';
       $('side-api').className = 'font-semibold ' + (connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400');
       $('side-model').textContent = 'Model: ' + (state.demo ? 'SIMULASI (tanpa API)' : state.model);
@@ -693,7 +687,7 @@
 
     /* --------------------------- API & Gemini --------------------------- */
     function openApiModal() {
-      $('access-code-input').value = state.accessCode;
+      $('api-key-input').value = state.apiKey;
       $('model-select').value = state.model;
       $('demo-toggle').checked = state.demo;
       $('api-test-result').className = 'mt-4 hidden';
@@ -705,14 +699,22 @@
       $('api-modal').classList.remove('flex');
     }
 
-    /* Pesan detail dari server sudah lengkap; ini hanya fallback bila respons tidak terbaca */
     function friendlyError(status, msg) {
       const m = String(msg || '').replace(/\s+/g, ' ').trim();
-      if (m) return m.slice(0, 300);
-      if (status === 401 || status === 403) return 'Kode Akses ditolak server. Periksa kode akses di menu Koneksi AI.';
-      if (status === 404) return 'Endpoint backend (/api/gemini) belum tersedia. Pastikan backend sudah di-deploy.';
-      if (status >= 500) return 'Server AI sedang bermasalah. Coba lagi beberapa saat.';
-      return 'Terjadi kesalahan pada koneksi AI.';
+      const detail = m ? ' Detail Google: ' + m.slice(0, 260) : '';
+      if (/API[_ ]?key[_ ]?(not[_ ]?valid|invalid|expired)|API_KEY_INVALID/i.test(m))
+        return 'API Key tidak valid / sudah dicabut. Buat key baru di https://aistudio.google.com/apikey lalu simpan lagi.' + detail;
+      if (/referrer|HTTP_REFERRER|origin.*block|API_KEY_HTTP_REFERRER_BLOCKED/i.test(m))
+        return 'API Key diblokir oleh Application restrictions. Di AI Studio → kunci → Application restrictions, pilih None (atau HTTP referrers dengan domain situs ini), lalu coba lagi.' + detail;
+      if (/SERVICE_DISABLED|API not enabled|permission denied/i.test(m))
+        return 'Gemini API belum aktif untuk project tersebut. Aktifkan di Google Cloud Console → APIs & Services → Library → Gemini API.' + detail;
+      if (status === 400) return 'Permintaan ditolak Gemini (400). Periksa model & format permintaan.' + detail;
+      if (status === 401 || status === 403) return 'API Key ditolak Google (' + status + '). Periksa: (1) kunci masih aktif di AI Studio, (2) Application restrictions = None atau HTTP referrers sesuai domain ini, (3) Gemini API aktif untuk project tersebut.' + detail;
+      if (status === 404) return 'Model tidak tersedia (' + state.model + '). Model Gemini 2.5 sudah deprecated untuk key baru — pilih gemini-3.5-flash-lite (atau model lain yang tersedia) di menu API Key, lalu Simpan.' + detail;
+      if (status === 429) return 'Kuota / rate limit Gemini terlalu penuh. Tunggu sebentar atau gunakan model flash-lite.' + detail;
+      if (status >= 500) return 'Server Gemini sedang bermasalah (' + status + '). Coba lagi beberapa saat.' + detail;
+      if (/fetch|network|failed/i.test(m)) return 'Tidak dapat terhubung ke Gemini. Periksa koneksi internet Anda.' + detail;
+      return m || 'Terjadi kesalahan yang tidak diketahui.';
     }
 
     function extractJson(text) {
@@ -725,29 +727,38 @@
       catch (e) { throw new Error('Gagal membaca JSON dari Gemini: ' + e.message + '. Cuplikan: ' + s.slice(start, start + 160)); }
     }
 
-    async function geminiRequest(prompt, image, wantJson, override) {
-      const code = override && override.accessCode !== undefined ? override.accessCode : state.accessCode;
-      const model = override && override.model ? override.model : state.model;
-      if (!code) throw new Error('Kode Akses belum diisi. Buka menu Koneksi AI terlebih dahulu.');
-      const payload = { accessCode: code, model, prompt, wantJson: wantJson !== false };
-      if (image) payload.image = { mime: image.mime || 'image/jpeg', data: image.data };
-
+    async function geminiRequest(prompt, image, wantJson) {
+      if (!state.apiKey) throw new Error('API Key belum diisi. Buka menu API Key terlebih dahulu.');
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(state.model) + ':generateContent?key=' + encodeURIComponent(state.apiKey);
+      const parts = [{ text: prompt }];
+      if (image) parts.push({ inline_data: { mime_type: image.mime || 'image/jpeg', data: image.data } });
+      const generationConfig = { temperature: 0.15, maxOutputTokens: 8192 };
+      // responseSchema tidak dipakai agar kompatibel lintas model; MIME JSON memaksa keluaran terstruktur.
+      if (wantJson !== false) generationConfig.responseMimeType = 'application/json';
+      // thinkingBudget sudah tidak didukung Gemini 3/4; gemini-3.5-flash-lite default-nya minimal.
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 180000);
       let res, data;
       try {
-        res = await fetch(API_ENDPOINT, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal, body: JSON.stringify(payload)
+        res = await fetch(url, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+          body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig })
         });
         data = await res.json().catch(() => ({}));
       } catch (e) {
-        if (e.name === 'AbortError') throw new Error('Permintaan terlalu lama. Coba gambar yang lebih kecil.');
-        throw new Error('Tidak dapat menghubungi server AI. Periksa koneksi internet dan status deploy backend.');
+        if (e.name === 'AbortError') throw new Error('Permintaan terlalu lama (>3 menit). Coba gambar dengan resolusi lebih kecil.');
+        throw new Error(friendlyError(0, e.message));
       } finally { clearTimeout(timer); }
-      if (!res.ok || data.ok === false) throw new Error(data.error || friendlyError(res.status, ''));
-      if (!data.text) throw new Error('Server AI tidak mengembalikan jawaban.');
-      return wantJson === false ? data.text : extractJson(data.text);
+      if (!res.ok) throw new Error(friendlyError(res.status, data && data.error && data.error.message));
+      const feedback = data.promptFeedback || {};
+      if (feedback.blockReason) throw new Error('Permintaan diblokir Gemini (' + feedback.blockReason + '). Periksa gambar dan teks yang dikirim.');
+      const cand = data.candidates && data.candidates[0];
+      if (!cand) throw new Error('Gemini tidak mengembalikan kandidat jawaban. ' + (JSON.stringify(feedback) || '').slice(0, 150));
+      if (cand.finishReason === 'MAX_TOKENS') throw new Error('Jawaban AI terpotong (MAX_TOKENS). Kurangi jumlah soal atau coba model lain.');
+      if (cand.finishReason === 'SAFETY') throw new Error('Permintaan diblokir filter keamanan Gemini.');
+      const text = ((cand.content && cand.content.parts) || []).filter((p) => p.text).map((p) => p.text).join('');
+      if (!text) throw new Error('Gemini mengembalikan respons kosong.');
+      return wantJson === false ? text : extractJson(text);
     }
 
     /* ------------------------- Parsing kunci (AI) ------------------------ */
@@ -896,42 +907,43 @@
     $('btn-close-api').addEventListener('click', closeApiModal);
     $('api-modal').addEventListener('click', (e) => { if (e.target === $('api-modal')) closeApiModal(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeApiModal(); closeDetail(); } });
-    $('btn-toggle-code').addEventListener('click', () => {
-      const i = $('access-code-input');
+    $('btn-toggle-key').addEventListener('click', () => {
+      const i = $('api-key-input');
       i.type = i.type === 'password' ? 'text' : 'password';
-      $('btn-toggle-code').textContent = i.type === 'password' ? 'TAMPIL' : 'SEMBUNYI';
+      $('btn-toggle-key').textContent = i.type === 'password' ? 'TAMPIL' : 'SEMBUNYI';
     });
     $('btn-save-api').addEventListener('click', () => {
-      state.accessCode = $('access-code-input').value.trim();
+      state.apiKey = $('api-key-input').value.trim();
       state.model = $('model-select').value;
       state.demo = $('demo-toggle').checked;
-      sessionSet(SESSION_CODE, state.accessCode);
-      safeSet(STORE.model, state.model);
+      safeSet(STORE.key, state.apiKey); safeSet(STORE.model, state.model);
       safeSet(STORE.demo, state.demo ? '1' : '0');
       updateSidebar(); closeApiModal();
-      toast(state.demo ? 'Mode Demo aktif — tanpa backend.' : state.accessCode ? 'Kode Akses tersimpan untuk tab ini.' : 'Kode Akses dikosongkan.', 'success');
+      toast(state.demo ? 'Mode Demo aktif — Anda bisa mencoba seluruh alur tanpa API.' : state.apiKey ? 'API Key tersimpan di browser ini.' : 'API Key dikosongkan.', 'success');
     });
     $('btn-clear-api').addEventListener('click', () => {
-      state.accessCode = ''; sessionSet(SESSION_CODE, ''); $('access-code-input').value = '';
+      state.apiKey = ''; safeSet(STORE.key, ''); $('api-key-input').value = '';
       $('api-test-result').className = 'mt-4 hidden';
-      updateSidebar(); toast('Kode Akses dihapus dari browser.', 'info');
+      updateSidebar(); toast('API Key dihapus dari browser.', 'info');
     });
     $('btn-test-api').addEventListener('click', async () => {
-      const code = $('access-code-input').value.trim();
+      const key = $('api-key-input').value.trim();
       const model = $('model-select').value;
       const box = $('api-test-result');
       if ($('demo-toggle').checked) { box.className = 'mt-4 rounded-xl bg-amber-50 px-3 py-2.5 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300'; box.textContent = 'Mode Demo aktif — uji koneksi tidak diperlukan.'; return; }
-      if (!code) { box.className = 'mt-4 rounded-xl bg-rose-50 px-3 py-2.5 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-300'; box.textContent = 'Isi Kode Akses terlebih dahulu.'; return; }
+      if (!key) { box.className = 'mt-4 rounded-xl bg-rose-50 px-3 py-2.5 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-300'; box.textContent = 'Isi API Key terlebih dahulu.'; return; }
       box.className = 'mt-4 rounded-xl bg-indigo-50 px-3 py-2.5 text-xs text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300';
-      box.textContent = 'Menguji koneksi ke server AI (' + model + ')…';
+      box.textContent = 'Menguji koneksi ke ' + model + '…';
+      const oldKey = state.apiKey, oldModel = state.model;
+      state.apiKey = key; state.model = model;
       try {
-        await geminiRequest('Balas dengan teks singkat: KONEKSI_OK', null, false, { accessCode: code, model });
+        await geminiRequest('Balas dengan teks singkat: KONEKSI_OK', null, false);
         box.className = 'mt-4 rounded-xl bg-emerald-50 px-3 py-2.5 text-xs text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300';
-        box.textContent = '✓ Koneksi berhasil. Server AI & model ' + model + ' siap dipakai.';
+        box.textContent = '✓ Koneksi berhasil. Model ' + model + ' siap dipakai.';
       } catch (e) {
         box.className = 'mt-4 whitespace-pre-line break-words rounded-xl bg-rose-50 px-3 py-2.5 text-xs leading-relaxed text-rose-700 dark:bg-rose-950/30 dark:text-rose-300';
-        box.textContent = '✗ ' + e.message;
-      }
+        box.textContent = '✗ ' + e.message + '\nKelola kunci: https://aistudio.google.com/apikey';
+      } finally { state.apiKey = oldKey; state.model = oldModel; }
     });
 
     $('btn-theme').addEventListener('click', () => applyTheme(!document.documentElement.classList.contains('dark')));
@@ -1084,7 +1096,7 @@
     $('btn-parse').addEventListener('click', async () => {
       const text = $('key-text').value.trim();
       if (!text) { toast('Masukkan teks kunci atau upload .docx terlebih dahulu.', 'error'); setKeyMode('text'); return; }
-      if (!state.accessCode && !state.demo) { toast('Masukkan Kode Akses atau aktifkan Mode Demo.', 'error'); openApiModal(); return; }
+      if (!state.apiKey && !state.demo) { toast('Atur API Key Gemini atau aktifkan Mode Demo.', 'error'); openApiModal(); return; }
       const btn = $('btn-parse'), err = $('parse-error'), load = $('parse-loading');
       btn.disabled = true; err.classList.add('hidden'); load.classList.remove('hidden');
       $('parse-loading-text').textContent = state.demo ? 'Mode Demo: membaca pola nomor pada teks…' : 'Gemini sedang menyusun JSON kunci jawaban…';
@@ -1319,7 +1331,7 @@
           };
         }),
         nama_terdeteksi: state.student.nama,
-        catatan_umum: 'Hasil ini berasal dari MODE DEMO. Gunakan koneksi AI untuk koreksi LJK yang sebenarnya.'
+        catatan_umum: 'Hasil ini berasal dari MODE DEMO. Gunakan API Key Gemini untuk koreksi LJK yang sebenarnya.'
       };
     }
 
@@ -1408,7 +1420,7 @@
       if (!$('student-name').value.trim()) { v.textContent = '⚠ Nama siswa wajib diisi.'; setStep(2); $('student-name').focus(); return; }
       const total = state.keyData.pg.length + state.keyData.menjodohkan.length + state.keyData.esai.length;
       if (!total) { v.textContent = '⚠ Kunci jawaban belum tersedia.'; setStep(1); return; }
-      if (!state.accessCode && !state.demo) { toast('Masukkan Kode Akses atau aktifkan Mode Demo.', 'error'); openApiModal(); return; }
+      if (!state.apiKey && !state.demo) { toast('Atur API Key Gemini atau aktifkan Mode Demo.', 'error'); openApiModal(); return; }
 
       state.student = {
         nama: $('student-name').value.trim(),
