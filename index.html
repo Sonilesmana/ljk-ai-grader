@@ -1,0 +1,1734 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Sistem Koreksi LJK Otomatis berbasis Gemini AI: OMR, OCR, dan penilaian esai semantik." />
+  <title>LJK Vision — Koreksi LJK Otomatis (OMR + OCR + AI)</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+          keyframes: {
+            floaty: { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-8px)' } },
+            scanline: { '0%': { top: '0%' }, '100%': { top: '100%' } },
+            pop: { '0%': { opacity: '0', transform: 'scale(.96) translateY(6px)' }, '100%': { opacity: '1', transform: 'scale(1) translateY(0)' } },
+            spinslow: { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } }
+          },
+          animation: {
+            floaty: 'floaty 3s ease-in-out infinite',
+            scanline: 'scanline 2.4s ease-in-out infinite alternate',
+            pop: 'pop .25s ease-out both',
+            spinslow: 'spinslow 8s linear infinite'
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style type="text/tailwindcss">
+    @layer components {
+      .card { @apply rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900; }
+      .card-soft { @apply rounded-xl border border-slate-200/70 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/60; }
+      .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 disabled:cursor-not-allowed disabled:opacity-50; }
+      .btn-primary { @apply bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 active:scale-[.98]; }
+      .btn-emerald { @apply bg-emerald-600 text-white shadow-sm shadow-emerald-600/20 hover:bg-emerald-700 active:scale-[.98]; }
+      .btn-ghost { @apply border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800; }
+      .btn-danger { @apply border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/60; }
+      .input { @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-600; }
+      .label { @apply mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400; }
+      .chip { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold; }
+      .th { @apply px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400; }
+      .td { @apply px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200; }
+    }
+  </style>
+  <style>
+    html { scroll-behavior: smooth; }
+    body { font-feature-settings: "cv11", "ss01"; }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; background-clip: content-box; }
+    .drop-active { border-color: #6366f1 !important; background: #eef2ff !important; }
+    .dark .drop-active { background: #1e1b4b33 !important; }
+    .scan-frame::before, .scan-frame::after,
+    .scan-frame .c::before, .scan-frame .c::after {
+      content: ''; position: absolute; width: 26px; height: 26px; border-color: #818cf8; border-style: solid; pointer-events: none;
+    }
+    .scan-frame::before { top: -2px; left: -2px; border-width: 3px 0 0 3px; border-top-left-radius: 10px; }
+    .scan-frame::after { top: -2px; right: -2px; border-width: 3px 3px 0 0; border-top-right-radius: 10px; }
+    .scan-frame .c::before { bottom: -2px; left: -2px; border-width: 0 0 3px 3px; border-bottom-left-radius: 10px; }
+    .scan-frame .c::after { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; border-bottom-right-radius: 10px; }
+    .hide-scroll::-webkit-scrollbar { display: none; }
+    .hide-scroll { scrollbar-width: none; }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
+
+  <!-- ============ NAVBAR ============ -->
+  <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-950/85">
+    <div class="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3">
+      <div class="flex min-w-0 items-center gap-3">
+        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/25">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-6 w-6"><path d="M4 7V5a2 2 0 0 1 2-2h2M20 7V5a2 2 0 0 0-2-2h-2M4 17v2a2 2 0 0 0 2 2h2M20 17v2a2 2 0 0 1-2 2h-2"/><circle cx="12" cy="12" r="3.2"/><path d="m14.5 14.5 3.5 3.5"/></svg>
+        </div>
+        <div class="min-w-0">
+          <h1 class="truncate text-base font-extrabold tracking-tight sm:text-lg">LJK Vision <span class="text-indigo-600 dark:text-indigo-400">AI</span></h1>
+          <p class="hidden truncate text-[11px] font-medium text-slate-500 dark:text-slate-400 sm:block">Koreksi Lembar Jawaban Otomatis · OMR + OCR + AI Grading</p>
+        </div>
+      </div>
+
+      <div class="ml-auto flex items-center gap-2">
+        <span id="demo-badge" class="chip hidden bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">MODE DEMO</span>
+        <button id="btn-print-template" class="btn btn-ghost hidden px-3 py-2 sm:inline-flex" title="Cetak template LJK kosong">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 15h12v6H6z"/></svg>
+          <span class="hidden lg:inline">Template LJK</span>
+        </button>
+        <button id="btn-api" class="btn btn-ghost px-3 py-2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="m15 7 5 5-5 5M9 17l-5-5 5-5"/></svg>
+          <span class="hidden sm:inline">API Key</span>
+          <span id="api-dot" class="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+        </button>
+        <button id="btn-theme" class="btn btn-ghost h-10 w-10 px-0" title="Ganti tema">
+          <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+          <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="hidden h-4 w-4"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ STEPPER ============ -->
+  <div class="border-b border-slate-200/70 bg-white/50 dark:border-slate-800/60 dark:bg-slate-900/30">
+    <div class="mx-auto max-w-7xl px-4 py-4">
+      <div id="stepper" class="hide-scroll flex gap-2 overflow-x-auto pb-1"></div>
+    </div>
+  </div>
+
+  <main class="mx-auto max-w-7xl px-4 py-6 sm:py-8">
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_290px]">
+      <div class="min-w-0 space-y-6">
+
+        <!-- ============ STEP 1 ============ -->
+        <section id="step-1" class="step-panel animate-pop">
+          <div class="card overflow-hidden">
+            <div class="flex flex-wrap items-center gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+              <div class="grid h-9 w-9 place-items-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+              </div>
+              <div class="mr-auto">
+                <h2 class="text-base font-bold">Kunci Jawaban</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Upload .docx atau tempel teks → AI menyusun JSON terstruktur</p>
+              </div>
+              <span class="chip bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" id="chip-key-count">0 soal</span>
+            </div>
+
+            <div class="p-5">
+              <div class="mb-5 flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800/70" role="tablist">
+                <button id="tab-docx" class="key-tab flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition" data-mode="docx">Upload .docx</button>
+                <button id="tab-text" class="key-tab flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition" data-mode="text">Tempel Teks</button>
+              </div>
+
+              <div id="pane-docx">
+                <div id="drop-docx" class="dropzone flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-4 py-10 text-center transition hover:border-indigo-400 dark:border-slate-700 dark:bg-slate-950/40">
+                  <div class="mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="h-7 w-7"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+                  </div>
+                  <p class="text-sm font-semibold">Tarik file .docx ke sini atau klik untuk pilih</p>
+                  <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Dokumen Word berisi daftar kunci jawaban Guru</p>
+                  <input id="docx-input" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden" />
+                </div>
+                <div id="docx-file-info" class="mt-3 hidden"></div>
+              </div>
+
+              <div id="pane-text" class="hidden">
+                <textarea id="key-text" rows="8" class="input resize-y font-mono text-xs leading-relaxed" placeholder="Contoh:&#10;KUNCI JAWABAN&#10;PILIHAN GANDA&#10;1. B&#10;2. C&#10;MENJODOHKAN&#10;1. C&#10;ESAI&#10;1. Jelaskan OSI layer: ... (bobot 10)"></textarea>
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                  <button id="btn-sample-key" class="text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400">Muat contoh kunci</button>
+                  <span class="text-xs text-slate-400">·</span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400">Teks hasil ekstraksi .docx akan muncul di sini</span>
+                </div>
+              </div>
+
+              <div class="mt-5 flex flex-wrap items-end gap-3">
+                <div class="w-32">
+                  <label class="label" for="bobot-objektif">Bobot / soal objektif</label>
+                  <input id="bobot-objektif" type="number" min="0.5" max="100" step="0.5" value="1" class="input" />
+                </div>
+                <button id="btn-parse" class="btn btn-primary flex-1 sm:flex-none">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z"/><path d="m19 16 .8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16Z"/></svg>
+                  Ekstrak &amp; Parse dengan AI
+                </button>
+                <span class="text-xs text-slate-400">PG &amp; Menjodohkan bobotnya sama; Esai memakai bobot masing-masing.</span>
+              </div>
+
+              <div id="parse-loading" class="mt-5 hidden rounded-xl border border-indigo-200 bg-indigo-50/70 p-4 dark:border-indigo-900/50 dark:bg-indigo-950/30">
+                <div class="flex items-center gap-3">
+                  <span class="h-4 w-4 animate-spin rounded-full border-2 border-indigo-300 border-t-indigo-600"></span>
+                  <p id="parse-loading-text" class="text-sm font-medium text-indigo-800 dark:text-indigo-200">AI sedang membaca struktur kunci jawaban…</p>
+                </div>
+              </div>
+              <div id="parse-error" class="mt-5 hidden rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300"></div>
+
+              <!-- Hasil parsing: tabel bisa diedit -->
+              <div id="key-result" class="mt-6 hidden space-y-4">
+                <div class="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><path d="m20 6-11 11-5-5"/></svg>
+                  Kunci terdeteksi. Periksa dan sunting jika perlu sebelum memindai LJK.
+                </div>
+
+                <div class="card-soft overflow-hidden">
+                  <div class="flex items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-800">
+                    <h3 class="text-sm font-bold">A. Pilihan Ganda <span id="count-pg" class="ml-1 text-xs font-medium text-slate-500">(0)</span></h3>
+                    <button data-add="pg" class="add-row text-xs font-bold text-indigo-600 hover:underline dark:text-indigo-400">+ Tambah baris</button>
+                  </div>
+                  <div class="max-h-64 overflow-auto">
+                    <table class="w-full border-collapse"><thead class="sticky top-0 bg-slate-50 dark:bg-slate-900"><tr><th class="th w-24">No.</th><th class="th">Kunci (A–E)</th><th class="th w-14"></th></tr></thead><tbody id="tbody-pg"></tbody></table>
+                  </div>
+                </div>
+
+                <div class="card-soft overflow-hidden">
+                  <div class="flex items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-800">
+                    <h3 class="text-sm font-bold">B. Menjodohkan <span id="count-mj" class="ml-1 text-xs font-medium text-slate-500">(0)</span></h3>
+                    <button data-add="menjodohkan" class="add-row text-xs font-bold text-indigo-600 hover:underline dark:text-indigo-400">+ Tambah baris</button>
+                  </div>
+                  <div class="max-h-64 overflow-auto">
+                    <table class="w-full border-collapse"><thead class="sticky top-0 bg-slate-50 dark:bg-slate-900"><tr><th class="th w-24">No.</th><th class="th">Kunci pasangan</th><th class="th w-14"></th></tr></thead><tbody id="tbody-menjodohkan"></tbody></table>
+                  </div>
+                </div>
+
+                <div class="card-soft overflow-hidden">
+                  <div class="flex items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-800">
+                    <h3 class="text-sm font-bold">C. Esai <span id="count-esai" class="ml-1 text-xs font-medium text-slate-500">(0)</span></h3>
+                    <button data-add="esai" class="add-row text-xs font-bold text-indigo-600 hover:underline dark:text-indigo-400">+ Tambah baris</button>
+                  </div>
+                  <div class="max-h-72 overflow-auto">
+                    <table class="w-full border-collapse"><thead class="sticky top-0 bg-slate-50 dark:bg-slate-900"><tr><th class="th w-20">No.</th><th class="th">Kunci jawaban / poin penilaian</th><th class="th w-28">Bobot maks.</th><th class="th w-14"></th></tr></thead><tbody id="tbody-esai"></tbody></table>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Perubahan tersimpan otomatis di browser.</p>
+                  <button id="btn-to-step2" class="btn btn-primary">
+                    Lanjut ke Scan LJK
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><path d="m9 18 6-6-6-6"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ STEP 2 ============ -->
+        <section id="step-2" class="step-panel hidden">
+          <div class="card overflow-hidden">
+            <div class="flex flex-wrap items-center gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+              <div class="grid h-9 w-9 place-items-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </div>
+              <div class="mr-auto"><h2 class="text-base font-bold">Scan Lembar Jawaban Siswa</h2><p class="text-xs text-slate-500 dark:text-slate-400">Kamera belakang dengan panduan bingkai, atau upload JPG/PNG</p></div>
+              <button id="btn-back-step1" class="btn btn-ghost px-3 py-2">← Kunci</button>
+            </div>
+
+            <div class="grid gap-6 p-5 md:grid-cols-2">
+              <div>
+                <h3 class="mb-3 text-sm font-bold">Foto LJK</h3>
+                <div class="relative aspect-[4/3] overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 dark:border-slate-800">
+                  <video id="camera-video" autoplay playsinline muted class="hidden h-full w-full object-cover"></video>
+                  <img id="image-preview" alt="Pratinjau LJK siswa" class="hidden h-full w-full object-contain" />
+                  <div id="camera-overlay" class="pointer-events-none absolute inset-0 hidden">
+                    <div class="scan-frame absolute inset-[10%] rounded-lg border border-white/25">
+                      <div class="absolute inset-x-2 h-0.5 animate-scanline rounded-full bg-indigo-400/80 shadow-[0_0_16px_4px_rgba(129,140,248,.6)]"></div>
+                      <span class="c"></span>
+                    </div>
+                    <p class="absolute inset-x-0 bottom-2 text-center text-[11px] font-semibold text-white/85">Posisikan seluruh LJK di dalam bingkai</p>
+                  </div>
+                  <div id="camera-placeholder" class="absolute inset-0 grid place-items-center px-6 text-center">
+                    <div>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" class="mx-auto mb-3 h-12 w-12 text-slate-600"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>
+                      <p class="text-sm font-semibold text-slate-300">Belum ada foto LJK</p>
+                      <p class="mt-1 text-xs text-slate-500">Buka kamera atau pilih file gambar</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button id="btn-camera" class="btn btn-ghost flex-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>Buka Kamera Belakang</button>
+                  <button id="btn-capture" class="btn btn-primary hidden flex-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>Ambil Foto</button>
+                  <button id="btn-stop-camera" class="btn btn-ghost hidden">Tutup</button>
+                </div>
+
+                <div id="drop-image" class="dropzone mt-3 flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 px-3 py-3 text-center transition hover:border-indigo-400 dark:border-slate-700">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5 text-slate-400"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M4 17v3h16v-3"/></svg>
+                  <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">Atau upload gambar JPG / PNG</span>
+                  <input id="image-input" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" />
+                </div>
+                <div id="image-info" class="mt-2 hidden"></div>
+                <p class="mt-3 text-[11px] leading-relaxed text-slate-400">Tips: pencahayaan cukup, LJK mendatar, hindari bayangan &amp; pantulan. Gambar akan dikompres otomatis sebelum dikirim ke AI.</p>
+              </div>
+
+              <div>
+                <h3 class="mb-3 text-sm font-bold">Data Siswa</h3>
+                <div class="card-soft space-y-4 p-4">
+                  <div>
+                    <label class="label" for="student-name">Nama Siswa <span class="text-rose-500">*</span></label>
+                    <input id="student-name" class="input" placeholder="Contoh: Ahmad Rizky Pratama" autocomplete="off" />
+                  </div>
+                  <div>
+                    <label class="label" for="student-class">Kelas <span class="text-rose-500">*</span></label>
+                    <select id="student-class" class="input">
+                      <option>X TKJ</option><option>XI TKJ</option><option>XII TKJ</option>
+                      <option disabled>──────────</option>
+                      <option>X IPA</option><option>XI IPA</option><option>XII IPA</option>
+                      <option>X IPS</option><option>XI IPS</option><option>XII IPS</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="label" for="student-nis">NIS / No. Induk <span class="font-normal normal-case text-slate-400">(opsional)</span></label>
+                    <input id="student-nis" class="input" placeholder="Contoh: 20240115" autocomplete="off" />
+                  </div>
+                  <div class="rounded-lg bg-indigo-50 px-3 py-2.5 text-[11px] leading-relaxed text-indigo-800 dark:bg-indigo-500/10 dark:text-indigo-300">
+                    Nama dan kelas akan tercetak di rekap nilai. Jika nama tertulis di LJK berbeda, AI akan memberi catatan pada hasil koreksi.
+                  </div>
+                </div>
+
+                <div class="mt-5 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                  <p class="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">Ringkasan kunci aktif</p>
+                  <div id="key-mini-summary" class="flex flex-wrap gap-2 text-xs"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+              <p id="grade-validation" class="mr-auto text-xs font-medium text-rose-600 dark:text-rose-400"></p>
+              <button id="btn-start-grade" class="btn btn-emerald px-6">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z"/></svg>
+                Mulai Koreksi AI
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ STEP 3 ============ -->
+        <section id="step-3" class="step-panel hidden">
+          <div class="card overflow-hidden">
+            <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+              <h2 class="text-base font-bold">Memproses Koreksi AI Multimodal</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Gambar + kunci jawaban dikirim ke Gemini Vision</p>
+            </div>
+            <div class="px-5 py-10 text-center sm:px-10">
+              <div class="relative mx-auto mb-7 h-28 w-28">
+                <div class="absolute inset-0 animate-spinslow rounded-full border-2 border-dashed border-indigo-300 dark:border-indigo-700"></div>
+                <div class="absolute inset-3 rounded-full border-2 border-violet-200 dark:border-violet-800"></div>
+                <div class="absolute inset-6 grid place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/30">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="h-9 w-9"><path d="M4 7V5a2 2 0 0 1 2-2h2M20 7V5a2 2 0 0 0-2-2h-2M4 17v2a2 2 0 0 0 2 2h2M20 17v2a2 2 0 0 1-2 2h-2"/><circle cx="12" cy="12" r="3.2"/></svg>
+                </div>
+                <div class="absolute -right-1 top-4 h-3 w-3 animate-pulse rounded-full bg-emerald-400"></div>
+              </div>
+
+              <h3 id="grade-headline" class="text-lg font-extrabold">AI sedang membaca LJK…</h3>
+              <p id="grade-status" class="mx-auto mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">Menyiapkan gambar dan kunci jawaban.</p>
+
+              <div class="mx-auto mt-6 h-2 max-w-md overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                <div id="grade-bar" class="h-full w-0 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-700"></div>
+              </div>
+
+              <div id="grade-stages" class="mx-auto mt-7 grid max-w-lg gap-2 text-left">
+                <div class="grade-stage flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm dark:border-slate-800" data-stage="0"><span class="stage-dot h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-slate-700"></span><span>Menyiapkan &amp; mengompres gambar LJK</span></div>
+                <div class="grade-stage flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm dark:border-slate-800" data-stage="1"><span class="stage-dot h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-slate-700"></span><span>OMR: mendeteksi bulatan / tanda silang PG &amp; Menjodohkan</span></div>
+                <div class="grade-stage flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm dark:border-slate-800" data-stage="2"><span class="stage-dot h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-slate-700"></span><span>OCR: membaca tulisan tangan bagian esai</span></div>
+                <div class="grade-stage flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm dark:border-slate-800" data-stage="3"><span class="stage-dot h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-slate-700"></span><span>AI Grading: menilai makna jawaban esai secara semantik</span></div>
+                <div class="grade-stage flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm dark:border-slate-800" data-stage="4"><span class="stage-dot h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-slate-700"></span><span>Menyusun rincian nilai &amp; rekap</span></div>
+              </div>
+
+              <div id="grade-error" class="mt-6 hidden rounded-xl border border-rose-200 bg-rose-50 p-4 text-left text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300"></div>
+              <div class="mt-6 flex flex-wrap justify-center gap-2">
+                <button id="btn-retry-grade" class="btn btn-primary hidden">Coba Lagi</button>
+                <button id="btn-back-step2" class="btn btn-ghost hidden">← Ubah Foto / Data</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ STEP 4 ============ -->
+        <section id="step-4" class="step-panel hidden space-y-5">
+          <div class="card overflow-hidden">
+            <div class="flex flex-wrap items-center gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+              <div id="result-avatar" class="grid h-10 w-10 place-items-center rounded-xl bg-emerald-100 text-sm font-extrabold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">RS</div>
+              <div class="mr-auto"><h2 id="result-title" class="text-base font-bold">Hasil Koreksi</h2><p id="result-subtitle" class="text-xs text-slate-500 dark:text-slate-400">—</p></div>
+              <span id="result-demo-flag" class="chip hidden bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">HASIL DEMO</span>
+              <span id="result-time" class="chip bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"></span>
+            </div>
+            <div class="p-5">
+              <div id="summary-cards" class="grid grid-cols-2 gap-3 lg:grid-cols-4"></div>
+              <div class="mt-5 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                <div class="mb-2 flex items-center justify-between text-xs font-semibold"><span class="text-slate-500 dark:text-slate-400">Pencapaian nilai</span><span id="nilai-label" class="text-slate-700 dark:text-slate-200">0 / 100</span></div>
+                <div class="h-3 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"><div id="nilai-bar" class="h-full w-0 rounded-full bg-gradient-to-r from-emerald-500 via-indigo-500 to-violet-500 transition-all duration-1000"></div></div>
+                <p id="nilai-formula" class="mt-2 text-[11px] text-slate-400"></p>
+              </div>
+              <div id="result-warning" class="mt-4 hidden rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-500/10 dark:text-amber-300"></div>
+            </div>
+          </div>
+
+          <div class="card overflow-hidden">
+            <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+              <h3 class="mr-auto text-sm font-bold">Rincian Per Soal</h3>
+              <div id="result-filters" class="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+                <button class="result-filter rounded-md px-2.5 py-1.5 text-xs font-bold transition" data-filter="semua">Semua</button>
+                <button class="result-filter rounded-md px-2.5 py-1.5 text-xs font-bold transition" data-filter="benar">Benar</button>
+                <button class="result-filter rounded-md px-2.5 py-1.5 text-xs font-bold transition" data-filter="salah">Salah</button>
+                <button class="result-filter rounded-md px-2.5 py-1.5 text-xs font-bold transition" data-filter="esai">Esai</button>
+              </div>
+            </div>
+            <div id="result-detail" class="space-y-5 p-5"></div>
+          </div>
+
+          <div class="card flex flex-wrap items-center gap-3 p-5">
+            <p class="mr-auto text-xs text-slate-500 dark:text-slate-400">Simpan nilai ke rekap sesi ini sebelum koreksi siswa berikutnya.</p>
+            <button id="btn-new-scan" class="btn btn-ghost">Koreksi LJK Lain</button>
+            <button id="btn-export-1" class="btn btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"/></svg>Export CSV</button>
+            <button id="btn-save-result" class="btn btn-emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><path d="M20 6 9 17l-5-5"/></svg>Simpan ke Daftar Nilai</button>
+          </div>
+        </section>
+
+      <aside class="space-y-5 lg:sticky lg:top-24 lg:self-start">
+        <div class="card p-5">
+          <h3 class="mb-4 text-sm font-bold">Status Sesi</h3>
+          <div class="space-y-3 text-sm">
+            <div class="flex items-center justify-between gap-2"><span class="text-slate-500 dark:text-slate-400">Koneksi AI</span><span id="side-api" class="font-semibold text-rose-600 dark:text-rose-400">Belum diatur</span></div>
+            <div class="flex items-center justify-between gap-2"><span class="text-slate-500 dark:text-slate-400">Kunci jawaban</span><span id="side-key" class="font-semibold text-slate-700 dark:text-slate-200">Belum ada</span></div>
+            <div class="flex items-center justify-between gap-2"><span class="text-slate-500 dark:text-slate-400">Foto LJK</span><span id="side-image" class="font-semibold text-slate-700 dark:text-slate-200">Belum ada</span></div>
+            <div class="flex items-center justify-between gap-2"><span class="text-slate-500 dark:text-slate-400">Rekap sesi ini</span><span id="side-rekap" class="font-semibold text-slate-700 dark:text-slate-200">0 siswa</span></div>
+          </div>
+          <div id="side-model" class="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-500 dark:bg-slate-950/60 dark:text-slate-400">Model: —</div>
+        </div>
+
+        <div class="card p-5">
+          <h3 class="mb-3 text-sm font-bold">Alur Kerja</h3>
+          <ol class="space-y-3 text-xs text-slate-600 dark:text-slate-400">
+            <li class="flex gap-2"><span class="font-bold text-indigo-600 dark:text-indigo-400">01</span><span>Siapkan kunci jawaban dari Word / teks.</span></li>
+            <li class="flex gap-2"><span class="font-bold text-indigo-600 dark:text-indigo-400">02</span><span>Foto LJK dengan kamera belakang atau upload gambar.</span></li>
+            <li class="flex gap-2"><span class="font-bold text-indigo-600 dark:text-indigo-400">03</span><span>AI membaca bulatan (OMR), tulisan tangan (OCR), lalu menilai esai.</span></li>
+            <li class="flex gap-2"><span class="font-bold text-indigo-600 dark:text-indigo-400">04</span><span>Simpan nilai &amp; ekspor rekap ke CSV/Excel.</span></li>
+          </ol>
+        </div>
+
+        <button id="btn-print-template-side" class="card w-full p-4 text-left transition hover:border-indigo-300 dark:hover:border-indigo-700">
+          <div class="flex items-center gap-3">
+            <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 15h12v6H6z"/></svg>
+            </div>
+            <div><p class="text-sm font-bold">Cetak Template LJK</p><p class="text-[11px] text-slate-500 dark:text-slate-400">40 PG · 10 Menjodohkan · 10 Esai</p></div>
+          </div>
+        </button>
+
+        <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-[11px] leading-relaxed text-amber-800 dark:border-amber-900/50 dark:bg-amber-500/10 dark:text-amber-300">
+          <strong>Privasi:</strong> API Key dan rekap hanya disimpan di <code>localStorage</code> browser ini. Tidak ada backend. Hapus kunci kapan saja lewat menu API Key.
+        </div>
+      </aside>
+    </div>
+
+    <!-- ============ REKAP ============ -->
+    <section id="rekap-section" class="card mt-8 overflow-hidden">
+      <div class="flex flex-wrap items-center gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+        <div class="grid h-9 w-9 place-items-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg>
+        </div>
+        <div class="mr-auto"><h2 class="text-base font-bold">Daftar Nilai / Rekap Sesi</h2><p class="text-xs text-slate-500 dark:text-slate-400">Tersimpan di browser selama sesi ini</p></div>
+        <span id="rekap-count" class="chip bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">0 siswa</span>
+        <button id="btn-export-2" class="btn btn-ghost px-3 py-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"/></svg><span class="hidden sm:inline">Export CSV</span></button>
+        <button id="btn-clear-rekap" class="btn btn-danger px-3 py-2">Hapus</button>
+      </div>
+
+      <div id="rekap-stats" class="grid grid-cols-2 gap-3 border-b border-slate-200 p-5 dark:border-slate-800 sm:grid-cols-4"></div>
+
+      <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 px-5 py-3 dark:border-slate-800">
+        <input id="rekap-search" type="search" class="input !w-full !py-2 sm:!w-64" placeholder="Cari nama atau NIS…" />
+        <select id="rekap-kelas" class="input !w-auto !py-2">
+          <option value="">Semua kelas</option>
+          <option>X TKJ</option><option>XI TKJ</option><option>XII TKJ</option>
+          <option>X IPA</option><option>XI IPA</option><option>XII IPA</option>
+          <option>X IPS</option><option>XI IPS</option><option>XII IPS</option>
+        </select>
+        <span id="rekap-filter-info" class="ml-auto text-xs text-slate-400"></span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[820px] border-collapse">
+          <thead class="bg-slate-50 dark:bg-slate-950/40"><tr><th class="th w-12">No</th><th class="th">Nama Siswa</th><th class="th w-28">Kelas</th><th class="th w-20 text-center">Benar</th><th class="th w-20 text-center">Salah</th><th class="th w-28 text-center">Skor Esai</th><th class="th w-24 text-center">Nilai</th><th class="th w-40">Waktu</th><th class="th w-24 text-right">Aksi</th></tr></thead>
+          <tbody id="rekap-body"></tbody>
+        </table>
+      </div>
+      <div id="rekap-empty" class="px-5 py-10 text-center">
+        <div class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="h-6 w-6"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+        <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">Belum ada nilai tersimpan</p>
+        <p class="mt-1 text-xs text-slate-400">Koreksi LJK siswa lalu klik “Simpan ke Daftar Nilai”.</p>
+      </div>
+    </section>
+
+    <footer class="mt-8 pb-6 text-center text-[11px] text-slate-400">
+      LJK Vision AI · Dibuat untuk guru · Gemini Vision + Mammoth.js · Berjalan sepenuhnya di browser
+    </footer>
+  </main>
+
+  <!-- ============ MODAL API KEY ============ -->
+  <div id="api-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+    <div class="card w-full max-w-md animate-pop p-6 shadow-2xl">
+      <div class="mb-5 flex items-start gap-3">
+        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M21 2 2 21m9-9 4 4M15 5l4 4M11 3l2 2m4 12 2 2M3 11l2 2"/></svg></div>
+        <div class="mr-auto"><h3 class="text-base font-bold">Pengaturan Gemini API</h3><p class="text-xs text-slate-500 dark:text-slate-400">Kunci disimpan lokal di browser Anda</p></div>
+        <button id="btn-close-api" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">✕</button>
+      </div>
+
+      <label class="label" for="api-key-input">Google AI Studio API Key</label>
+      <div class="relative">
+        <input id="api-key-input" type="password" autocomplete="off" spellcheck="false" class="input pr-12" placeholder="AIzaSy..." />
+        <button id="btn-toggle-key" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-bold text-slate-500 hover:text-indigo-600">TAMPIL</button>
+      </div>
+      <p class="mt-1.5 text-[11px] text-slate-400">Dapatkan gratis di <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">aistudio.google.com/apikey</a></p>
+
+      <label class="label mt-4" for="model-select">Model AI</label>
+      <select id="model-select" class="input">
+        <option value="gemini-2.5-flash">gemini-2.5-flash — cepat &amp; hemat (direkomendasikan)</option>
+        <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite — paling ringan</option>
+        <option value="gemini-2.5-pro">gemini-2.5-pro — paling akurat</option>
+      </select>
+
+      <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-500/10">
+        <input id="demo-toggle" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+        <span class="text-xs leading-relaxed text-amber-900 dark:text-amber-200"><strong>Mode Demo (tanpa API)</strong><br />Simulasikan parsing &amp; penilaian untuk mencoba alur aplikasi. Hasil bersifat contoh, bukan koreksi asli.</span>
+      </label>
+
+      <div id="api-test-result" class="mt-4 hidden rounded-xl px-3 py-2.5 text-xs font-medium"></div>
+
+      <div class="mt-5 flex gap-2">
+        <button id="btn-test-api" class="btn btn-ghost flex-1">Uji Koneksi</button>
+        <button id="btn-save-api" class="btn btn-primary flex-1">Simpan</button>
+      </div>
+      <button id="btn-clear-api" class="mt-3 w-full text-center text-xs font-semibold text-rose-600 hover:underline dark:text-rose-400">Hapus API Key dari browser</button>
+    </div>
+  </div>
+
+  <!-- ============ MODAL DETAIL NILAI ============ -->
+  <div id="detail-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+    <div class="card flex max-h-[88vh] w-full max-w-2xl animate-pop flex-col overflow-hidden shadow-2xl">
+      <div class="flex items-start gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+        <div class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        </div>
+        <div class="mr-auto"><h3 id="detail-title" class="text-base font-bold">Rincian Nilai</h3><p id="detail-subtitle" class="text-xs text-slate-500 dark:text-slate-400">—</p></div>
+        <button id="btn-close-detail" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">✕</button>
+      </div>
+      <div id="detail-content" class="space-y-4 overflow-y-auto p-5"></div>
+      <div class="flex justify-end border-t border-slate-200 px-5 py-3 dark:border-slate-800">
+        <button id="btn-detail-export" class="btn btn-ghost">Export CSV Detail</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PRINT FALLBACK ============ -->
+  <div id="print-fallback" class="fixed inset-0 z-50 hidden bg-white p-4 dark:bg-slate-900">
+    <div class="mx-auto mb-3 flex max-w-4xl items-center gap-3"><p class="mr-auto text-sm font-bold text-slate-700 dark:text-slate-200">Popup diblokir · Template terbuka di bawah. Klik tombol untuk mencetak.</p><button id="btn-print-fallback" class="btn btn-primary">Cetak</button><button id="btn-close-print" class="btn btn-ghost">Tutup</button></div>
+    <iframe id="print-iframe" title="Template LJK" class="mx-auto block h-[calc(100vh-90px)] w-full max-w-4xl rounded-lg border border-slate-300 bg-white"></iframe>
+  </div>
+
+  <div id="toast-container" class="pointer-events-none fixed bottom-5 right-5 z-[60] flex w-[min(360px,calc(100vw-40px))] flex-col gap-2"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+  <script>
+  /* ======================================================================
+     LJK VISION AI — aplikasi SPA murni (HTML + Tailwind + Vanilla JS)
+     ====================================================================== */
+  (function () {
+    'use strict';
+
+    const $ = (id) => document.getElementById(id);
+    const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+    const STORE = {
+      key: 'ljkvision.apiKey', model: 'ljkvision.model', theme: 'ljkvision.theme',
+      rekap: 'ljkvision.rekap', keyData: 'ljkvision.keyData', demo: 'ljkvision.demo',
+      bobot: 'ljkvision.bobot'
+    };
+
+    const safeGet = (k, fallback) => { try { const v = localStorage.getItem(k); return v === null ? fallback : v; } catch (e) { return fallback; } };
+    const safeSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { console.warn('localStorage penuh', e); } };
+    const safeJson = (k, fallback) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } };
+    const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const num = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
+    const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+    const round1 = (v) => Math.round(v * 10) / 10;
+
+    const STEPS = [
+      { n: 1, t: 'Kunci Jawaban', s: 'docx / teks' },
+      { n: 2, t: 'Scan LJK', s: 'kamera / upload' },
+      { n: 3, t: 'Koreksi AI', s: 'OMR + OCR' },
+      { n: 4, t: 'Hasil & Rekap', s: 'nilai + CSV' }
+    ];
+    const emptyKey = () => ({ pg: [], menjodohkan: [], esai: [] });
+
+    const state = {
+      step: 1, maxStep: 1,
+      apiKey: safeGet(STORE.key, ''),
+      model: safeGet(STORE.model, 'gemini-2.5-flash'),
+      demo: safeGet(STORE.demo, '0') === '1',
+      bobotObjektif: num(safeGet(STORE.bobot, '1'), 1),
+      keyData: safeJson(STORE.keyData, emptyKey()),
+      image: null,           // { data, mime, dataUrl, width, height, name }
+      student: { nama: '', kelas: 'X TKJ', nis: '' },
+      result: null,
+      rekap: safeJson(STORE.rekap, []),
+      stream: null,
+      grading: false,
+      gradeTimer: null,
+      keyMode: 'docx',
+      filter: 'semua',
+      rekapSearch: '',
+      rekapKelas: '',
+      activeDetailId: ''
+    };
+    if (!state.keyData || typeof state.keyData !== 'object') state.keyData = emptyKey();
+    ['pg', 'menjodohkan', 'esai'].forEach((g) => { if (!Array.isArray(state.keyData[g])) state.keyData[g] = []; });
+    if (!Array.isArray(state.rekap)) state.rekap = [];
+
+    /* ---------------------------- UI helpers ---------------------------- */
+    function toast(msg, type) {
+      const colors = {
+        success: 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-200',
+        error: 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950/70 dark:text-rose-200',
+        info: 'border-indigo-300 bg-indigo-50 text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950/70 dark:text-indigo-200'
+      };
+      const el = document.createElement('div');
+      el.className = 'animate-pop pointer-events-auto flex items-start gap-2 rounded-xl border px-4 py-3 text-sm font-semibold shadow-lg ' + (colors[type] || colors.info);
+      el.innerHTML = '<span class="mt-0.5">' + (type === 'error' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️') + '</span><span>' + escapeHtml(msg) + '</span>';
+      $('toast-container').appendChild(el);
+      setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(20px)'; el.style.transition = 'all .3s'; setTimeout(() => el.remove(), 320); }, 4000);
+    }
+
+    function renderStepper() {
+      $('stepper').innerHTML = STEPS.map((s) => {
+        const active = s.n === state.step;
+        const done = s.n < state.step || (s.n < state.maxStep && s.n !== state.step);
+        const reachable = s.n <= state.maxStep && !(state.grading && s.n !== 3);
+        let cls = 'flex flex-1 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ';
+        if (active) cls += 'border-indigo-400 bg-indigo-50 shadow-sm dark:border-indigo-600 dark:bg-indigo-500/10';
+        else if (done) cls += 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/60 dark:bg-emerald-500/5';
+        else cls += 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/50';
+        if (!reachable) cls += ' cursor-not-allowed opacity-60';
+        const numCls = active ? 'bg-indigo-600 text-white' : done ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400';
+        return '<button data-step="' + s.n + '" class="' + cls + '"' + (reachable ? '' : ' disabled') + '>' +
+          '<span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sm font-extrabold ' + numCls + '">' + (done && !active ? '✓' : s.n) + '</span>' +
+          '<span class="hidden min-w-0 sm:block"><span class="block truncate text-xs font-bold ' + (active ? 'text-indigo-700 dark:text-indigo-300' : '') + '">' + s.t + '</span>' +
+          '<span class="block truncate text-[10px] text-slate-400">' + s.s + '</span></span></button>';
+      }).join('');
+      $$('.step-btn, #stepper button[data-step]').forEach((b) => b.addEventListener('click', () => {
+        const n = parseInt(b.dataset.step, 10);
+        if (n <= state.maxStep && !(state.grading && n !== 3)) setStep(n);
+      }));
+    }
+
+    function setStep(n) {
+      state.step = n;
+      state.maxStep = Math.max(state.maxStep, n);
+      $$('.step-panel').forEach((p) => p.classList.add('hidden'));
+      const panel = $('step-' + n);
+      if (panel) { panel.classList.remove('hidden'); panel.classList.add('animate-pop'); }
+      renderStepper();
+      if (n === 2) renderKeyMiniSummary();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateSidebar() {
+      const total = state.keyData.pg.length + state.keyData.menjodohkan.length + state.keyData.esai.length;
+      $('chip-key-count').textContent = total + ' soal';
+      $('side-key').textContent = total ? total + ' soal' : 'Belum ada';
+      $('side-image').textContent = state.image ? (state.image.name || 'Foto LJK') : 'Belum ada';
+      $('side-rekap').textContent = state.rekap.length + ' siswa';
+      $('rekap-count').textContent = state.rekap.length + ' siswa';
+      const connected = state.demo || !!state.apiKey;
+      $('side-api').textContent = state.demo ? 'Mode Demo' : connected ? 'Tersambung' : 'Belum diatur';
+      $('side-api').className = 'font-semibold ' + (connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400');
+      $('side-model').textContent = 'Model: ' + (state.demo ? 'SIMULASI (tanpa API)' : state.model);
+      $('api-dot').className = 'h-2 w-2 rounded-full ' + (connected ? 'bg-emerald-500 shadow-[0_0_8px_2px_rgba(16,185,129,.4)]' : 'bg-slate-300 dark:bg-slate-600');
+      $('demo-badge').classList.toggle('hidden', !state.demo);
+    }
+
+    function applyTheme(dark) {
+      document.documentElement.classList.toggle('dark', dark);
+      $('icon-moon').classList.toggle('hidden', dark);
+      $('icon-sun').classList.toggle('hidden', !dark);
+      safeSet(STORE.theme, dark ? 'dark' : 'light');
+    }
+
+    /* --------------------------- API & Gemini --------------------------- */
+    function openApiModal() {
+      $('api-key-input').value = state.apiKey;
+      $('model-select').value = state.model;
+      $('demo-toggle').checked = state.demo;
+      $('api-test-result').className = 'mt-4 hidden';
+      $('api-modal').classList.remove('hidden');
+      $('api-modal').classList.add('flex');
+    }
+    function closeApiModal() {
+      $('api-modal').classList.add('hidden');
+      $('api-modal').classList.remove('flex');
+    }
+
+    function friendlyError(status, msg) {
+      const m = String(msg || '');
+      if (status === 400) return 'Permintaan ditolak Gemini (400). Periksa ukuran gambar atau format JSON kunci. ' + m.slice(0, 160);
+      if (status === 401 || status === 403) return 'API Key tidak valid atau tidak memiliki akses. Buka menu API Key dan periksa kunci Anda.';
+      if (status === 404) return 'Model tidak ditemukan (' + state.model + '). Pilih model lain di menu API Key.';
+      if (status === 429) return 'Kuota / rate limit Gemini terlalu penuh. Tunggu sebentar atau gunakan model flash-lite.';
+      if (status >= 500) return 'Server Gemini sedang bermasalah (' + status + '). Coba lagi beberapa saat.';
+      if (/fetch|network|failed/i.test(m)) return 'Tidak dapat terhubung ke Gemini. Periksa koneksi internet Anda.';
+      return m || 'Terjadi kesalahan yang tidak diketahui.';
+    }
+
+    function extractJson(text) {
+      let s = String(text || '').trim();
+      s = s.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+      const start = s.indexOf('{');
+      const end = s.lastIndexOf('}');
+      if (start === -1 || end === -1 || end < start) throw new Error('Gemini tidak mengembalikan JSON yang valid. Cuplikan: ' + s.slice(0, 180));
+      try { return JSON.parse(s.slice(start, end + 1)); }
+      catch (e) { throw new Error('Gagal membaca JSON dari Gemini: ' + e.message + '. Cuplikan: ' + s.slice(start, start + 160)); }
+    }
+
+    async function geminiRequest(prompt, image, wantJson) {
+      if (!state.apiKey) throw new Error('API Key belum diisi. Buka menu API Key terlebih dahulu.');
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(state.model) + ':generateContent?key=' + encodeURIComponent(state.apiKey);
+      const parts = [{ text: prompt }];
+      if (image) parts.push({ inline_data: { mime_type: image.mime || 'image/jpeg', data: image.data } });
+      const generationConfig = { temperature: 0.15, maxOutputTokens: 8192 };
+      // responseSchema tidak dipakai agar kompatibel lintas model; MIME JSON memaksa keluaran terstruktur.
+      if (wantJson !== false) generationConfig.responseMimeType = 'application/json';
+      if (/flash/i.test(state.model)) generationConfig.thinkingConfig = { thinkingBudget: 0 };
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 180000);
+      let res, data;
+      try {
+        res = await fetch(url, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+          body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig })
+        });
+        data = await res.json().catch(() => ({}));
+      } catch (e) {
+        if (e.name === 'AbortError') throw new Error('Permintaan terlalu lama (>3 menit). Coba gambar dengan resolusi lebih kecil.');
+        throw new Error(friendlyError(0, e.message));
+      } finally { clearTimeout(timer); }
+      if (!res.ok) throw new Error(friendlyError(res.status, data && data.error && data.error.message));
+      const feedback = data.promptFeedback || {};
+      if (feedback.blockReason) throw new Error('Permintaan diblokir Gemini (' + feedback.blockReason + '). Periksa gambar dan teks yang dikirim.');
+      const cand = data.candidates && data.candidates[0];
+      if (!cand) throw new Error('Gemini tidak mengembalikan kandidat jawaban. ' + (JSON.stringify(feedback) || '').slice(0, 150));
+      if (cand.finishReason === 'MAX_TOKENS') throw new Error('Jawaban AI terpotong (MAX_TOKENS). Kurangi jumlah soal atau coba model lain.');
+      if (cand.finishReason === 'SAFETY') throw new Error('Permintaan diblokir filter keamanan Gemini.');
+      const text = ((cand.content && cand.content.parts) || []).filter((p) => p.text).map((p) => p.text).join('');
+      if (!text) throw new Error('Gemini mengembalikan respons kosong.');
+      return wantJson === false ? text : extractJson(text);
+    }
+
+    /* ------------------------- Parsing kunci (AI) ------------------------ */
+    function demoParse(text) {
+      const out = emptyKey();
+      let group = 'pg';
+      String(text || '').split(/\r?\n/).forEach((line) => {
+        const l = line.trim();
+        if (!l) return;
+        if (/menjodohk|pencocokan|matching/i.test(l) && l.length < 60) { group = 'menjodohkan'; return; }
+        if (/esai|uraian|essay|paparan/i.test(l) && l.length < 60) { group = 'esai'; return; }
+        if (/pilihan ganda|pg\b|multiple choice/i.test(l) && l.length < 60) { group = 'pg'; return; }
+        const m = l.match(/^(\d{1,3})\s*[\.\)]\s*(.+)$/);
+        if (!m) return;
+        const no = parseInt(m[1], 10);
+        const val = m[2].trim();
+        if (group === 'esai') {
+          const bobot = (val.match(/(?:bobot|nilai|skor)\s*(?:maks(?:imal)?)?\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i) || [])[1];
+          let jawaban = val.replace(/^\s*(jawaban|kunci)\s*[:.]\s*/i, '').replace(/\(bobot[^)]*\)/gi, '').trim();
+          if (!jawaban) jawaban = val;
+          out.esai.push({ nomor: no, kunci_jawaban: jawaban, bobot_maksimal: bobot ? num(bobot.replace(',', '.'), 10) : 10 });
+        } else {
+          const kunci = (val.match(/^[\(\[]?([A-Ea-e0-9]{1,3})[\)\].\s]/) || [])[1] || val.split(/\s+/)[0];
+          out[group].push({ nomor: no, kunci: String(kunci).toUpperCase() });
+        }
+      });
+      return out;
+    }
+
+    async function parseKeyText(text) {
+      if (state.demo) { await new Promise((r) => setTimeout(r, 900)); return demoParse(text); }
+      const prompt = 'Kamu adalah asisten guru Indonesia yang teliti. Ekstrak KUNCI JAWABAN dari teks di bawah ini menjadi JSON terstruktur.\n\n' +
+        'ATURAN:\n' +
+        '- pg: array of {nomor:number, kunci:string}. Isi hanya soal pilihan ganda; kunci berupa huruf pilihan (A/B/C/D/E).\n' +
+        '- menjodohkan: array of {nomor:number, kunci:string}. Kunci berupa huruf/angka/teks pendek pada kolom pasangan jawaban.\n' +
+        '- esai: array of {nomor:number, kunci_jawaban:string, bobot_maksimal:number}. kunci_jawaban berupa rangkuman poin-poin penting yang harus muncul. bobot_maksimal diambil dari teks; jika tidak disebut, isi 10.\n' +
+        '- Jangan mengarang nomor yang tidak ada. Jika suatu bagian tidak ada, kembalikan array kosong. Nomor harus bilangan bulat.\n' +
+        '- Abaikan header, nama sekolah, dan kalimat instruksi umum.\n\n' +
+        'KEMBALIKAN JSON SAJA dengan bentuk persis:\n' +
+        '{"pg":[{"nomor":1,"kunci":"B"}],"menjodohkan":[{"nomor":1,"kunci":"C"}],"esai":[{"nomor":1,"kunci_jawaban":"...","bobot_maksimal":10}]}\n\n' +
+        'TEKS KUNCI JAWABAN:\n---\n' + text.slice(0, 60000) + '\n---';
+      const data = await geminiRequest(prompt, null, true);
+      const out = emptyKey();
+      ['pg', 'menjodohkan', 'esai'].forEach((g) => { if (Array.isArray(data[g])) out[g] = data[g]; });
+      return out;
+    }
+
+    /* ------------------------- Event: API modal ------------------------- */
+    $('btn-api').addEventListener('click', openApiModal);
+    $('btn-close-api').addEventListener('click', closeApiModal);
+    $('api-modal').addEventListener('click', (e) => { if (e.target === $('api-modal')) closeApiModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeApiModal(); closeDetail(); } });
+    $('btn-toggle-key').addEventListener('click', () => {
+      const i = $('api-key-input');
+      i.type = i.type === 'password' ? 'text' : 'password';
+      $('btn-toggle-key').textContent = i.type === 'password' ? 'TAMPIL' : 'SEMBUNYI';
+    });
+    $('btn-save-api').addEventListener('click', () => {
+      state.apiKey = $('api-key-input').value.trim();
+      state.model = $('model-select').value;
+      state.demo = $('demo-toggle').checked;
+      safeSet(STORE.key, state.apiKey); safeSet(STORE.model, state.model);
+      safeSet(STORE.demo, state.demo ? '1' : '0');
+      updateSidebar(); closeApiModal();
+      toast(state.demo ? 'Mode Demo aktif — Anda bisa mencoba seluruh alur tanpa API.' : state.apiKey ? 'API Key tersimpan di browser ini.' : 'API Key dikosongkan.', 'success');
+    });
+    $('btn-clear-api').addEventListener('click', () => {
+      state.apiKey = ''; safeSet(STORE.key, ''); $('api-key-input').value = '';
+      $('api-test-result').className = 'mt-4 hidden';
+      updateSidebar(); toast('API Key dihapus dari browser.', 'info');
+    });
+    $('btn-test-api').addEventListener('click', async () => {
+      const key = $('api-key-input').value.trim();
+      const model = $('model-select').value;
+      const box = $('api-test-result');
+      if ($('demo-toggle').checked) { box.className = 'mt-4 rounded-xl bg-amber-50 px-3 py-2.5 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300'; box.textContent = 'Mode Demo aktif — uji koneksi tidak diperlukan.'; return; }
+      if (!key) { box.className = 'mt-4 rounded-xl bg-rose-50 px-3 py-2.5 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-300'; box.textContent = 'Isi API Key terlebih dahulu.'; return; }
+      box.className = 'mt-4 rounded-xl bg-indigo-50 px-3 py-2.5 text-xs text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300';
+      box.textContent = 'Menguji koneksi ke ' + model + '…';
+      const oldKey = state.apiKey, oldModel = state.model;
+      state.apiKey = key; state.model = model;
+      try {
+        await geminiRequest('Balas dengan teks singkat: KONEKSI_OK', null, false);
+        box.className = 'mt-4 rounded-xl bg-emerald-50 px-3 py-2.5 text-xs text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300';
+        box.textContent = '✓ Koneksi berhasil. Model ' + model + ' siap dipakai.';
+      } catch (e) {
+        box.className = 'mt-4 rounded-xl bg-rose-50 px-3 py-2.5 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-300';
+        box.textContent = '✗ ' + e.message;
+      } finally { state.apiKey = oldKey; state.model = oldModel; }
+    });
+
+    $('btn-theme').addEventListener('click', () => applyTheme(!document.documentElement.classList.contains('dark')));
+    $('bobot-objektif').value = state.bobotObjektif;
+    $('bobot-objektif').addEventListener('change', () => {
+      state.bobotObjektif = clamp(num($('bobot-objektif').value, 1), 0.5, 100);
+      $('bobot-objektif').value = state.bobotObjektif;
+      safeSet(STORE.bobot, String(state.bobotObjektif));
+    });
+
+    /* ----------------------- Tabel kunci editable ----------------------- */
+    function setKeyMode(mode) {
+      state.keyMode = mode;
+      ['docx', 'text'].forEach((m) => {
+        $('tab-' + m).className = 'key-tab flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ' +
+          (mode === m ? 'bg-white text-indigo-700 shadow-sm dark:bg-slate-700 dark:text-indigo-200' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200');
+        $('pane-' + m).classList.toggle('hidden', mode !== m);
+      });
+    }
+
+    function normalizeKey(raw) {
+      const out = emptyKey();
+      (raw.pg || []).forEach((r) => {
+        const no = parseInt(r.nomor, 10); if (!Number.isFinite(no)) return;
+        out.pg.push({ nomor: no, kunci: String(r.kunci == null ? '' : r.kunci).trim().toUpperCase() });
+      });
+      (raw.menjodohkan || []).forEach((r) => {
+        const no = parseInt(r.nomor, 10); if (!Number.isFinite(no)) return;
+        out.menjodohkan.push({ nomor: no, kunci: String(r.kunci == null ? '' : r.kunci).trim().toUpperCase() });
+      });
+      (raw.esai || []).forEach((r) => {
+        const no = parseInt(r.nomor, 10); if (!Number.isFinite(no)) return;
+        out.esai.push({
+          nomor: no,
+          kunci_jawaban: String(r.kunci_jawaban == null ? '' : r.kunci_jawaban).trim(),
+          bobot_maksimal: clamp(num(r.bobot_maksimal, 10), 0.5, 100)
+        });
+      });
+      ['pg', 'menjodohkan', 'esai'].forEach((g) => {
+        const seen = new Set();
+        out[g] = out[g].sort((a, b) => a.nomor - b.nomor).filter((r) => {
+          if (seen.has(r.nomor)) return false;
+          seen.add(r.nomor); return true;
+        });
+      });
+      return out;
+    }
+
+    function persistKey() {
+      safeSet(STORE.keyData, JSON.stringify(state.keyData));
+      updateSidebar();
+    }
+
+    function renderKeyTables() {
+      const groups = {
+        pg: { cols: 3, row: (r, i) => '<td class="td"><input type="number" min="1" class="input !w-20 !py-1.5" data-g="pg" data-i="' + i + '" data-f="nomor" value="' + r.nomor + '"></td>' +
+          '<td class="td"><input class="input !py-1.5 uppercase" data-g="pg" data-i="' + i + '" data-f="kunci" value="' + escapeHtml(r.kunci) + '" placeholder="A-E"></td>' },
+        menjodohkan: { cols: 3, row: (r, i) => '<td class="td"><input type="number" min="1" class="input !w-20 !py-1.5" data-g="menjodohkan" data-i="' + i + '" data-f="nomor" value="' + r.nomor + '"></td>' +
+          '<td class="td"><input class="input !py-1.5 uppercase" data-g="menjodohkan" data-i="' + i + '" data-f="kunci" value="' + escapeHtml(r.kunci) + '" placeholder="mis. C atau atom"></td>' },
+        esai: { cols: 4, row: (r, i) => '<td class="td"><input type="number" min="1" class="input !w-16 !py-1.5" data-g="esai" data-i="' + i + '" data-f="nomor" value="' + r.nomor + '"></td>' +
+          '<td class="td"><textarea rows="2" class="input !py-1.5 text-xs" data-g="esai" data-i="' + i + '" data-f="kunci_jawaban" placeholder="Poin-poin kunci jawaban">' + escapeHtml(r.kunci_jawaban) + '</textarea></td>' +
+          '<td class="td"><input type="number" min="0.5" step="0.5" class="input !py-1.5" data-g="esai" data-i="' + i + '" data-f="bobot_maksimal" value="' + r.bobot_maksimal + '"></td>' }
+      };
+      Object.keys(groups).forEach((g) => {
+        const cfg = groups[g];
+        const tbody = $('tbody-' + g);
+        tbody.innerHTML = state.keyData[g].length ? state.keyData[g].map((r, i) =>
+          '<tr class="border-b border-slate-100 last:border-0 dark:border-slate-800/70">' + cfg.row(r, i) +
+          '<td class="td text-right"><button type="button" data-del="' + g + '" data-i="' + i + '" class="rounded-lg px-2 py-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40" title="Hapus baris">✕</button></td></tr>'
+        ).join('') : '<tr><td colspan="' + cfg.cols + '" class="td py-4 text-center text-xs text-slate-400">Belum ada data. Klik “+ Tambah baris”.</td></tr>';
+        $('count-' + (g === 'menjodohkan' ? 'mj' : g)).textContent = '(' + state.keyData[g].length + ')';
+      });
+      updateSidebar();
+    }
+
+    $('key-result').addEventListener('input', (e) => {
+      const el = e.target;
+      if (!el.dataset || !el.dataset.g) return;
+      const g = el.dataset.g, i = parseInt(el.dataset.i, 10), f = el.dataset.f;
+      if (!state.keyData[g] || !state.keyData[g][i]) return;
+      state.keyData[g][i][f] = f === 'nomor' || f === 'bobot_maksimal' ? num(el.value, f === 'nomor' ? 1 : 10) : el.value;
+      persistKey();
+    });
+    $('key-result').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-del]');
+      if (!btn) return;
+      state.keyData[btn.dataset.del].splice(parseInt(btn.dataset.i, 10), 1);
+      renderKeyTables(); persistKey();
+    });
+    $$('.add-row').forEach((b) => b.addEventListener('click', () => {
+      const g = b.dataset.add;
+      const nextNo = state.keyData[g].reduce((m, r) => Math.max(m, r.nomor || 0), 0) + 1;
+      if (g === 'esai') state.keyData[g].push({ nomor: nextNo, kunci_jawaban: '', bobot_maksimal: 10 });
+      else state.keyData[g].push({ nomor: nextNo, kunci: '' });
+      renderKeyTables(); persistKey();
+    }));
+
+    $$('.key-tab').forEach((b) => b.addEventListener('click', () => setKeyMode(b.dataset.mode)));
+
+    const SAMPLE_KEY =
+      'KUNCI JAWABAN — UJIAN KOMPETENSI TKJ\n' +
+      'A. PILIHAN GANDA\n' +
+      '1. B\n2. C\n3. A\n4. D\n5. B\n' +
+      'B. MENJODOHKAN\n' +
+      'Pasangkan istilah dengan fungsinya!\n' +
+      '1. C\n2. A\n3. B\n' +
+      'C. ESAI\n' +
+      '1. Jelaskan fungsi protokol TCP pada jaringan. Kunci: connection-oriented, handshake tiga arah, retransmisi data, urutan paket terjamin. (bobot 15)\n' +
+      '2. Sebutkan langkah konfigurasi DHCP Server MikroTik. Kunci: alokasi IP pool, membuat dhcp-service, menetapkan interface, mengaktifkan service. (bobot 10)';
+
+    $('btn-sample-key').addEventListener('click', () => {
+      $('key-text').value = SAMPLE_KEY; setKeyMode('text');
+      toast('Contoh kunci jawaban dimuat.', 'info');
+    });
+
+    /* --------------------------- Upload .docx --------------------------- */
+    async function handleDocx(file) {
+      if (!/\.docx$/i.test(file.name)) { toast('File harus berformat .docx.', 'error'); return; }
+      const info = $('docx-file-info');
+      info.className = 'mt-3 flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300';
+      info.textContent = 'Membaca ' + file.name + ' dengan Mammoth.js…';
+      try {
+        if (typeof mammoth === 'undefined') throw new Error('Library Mammoth.js gagal dimuat. Periksa koneksi internet.');
+        const arr = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer: arr });
+        const text = String(result.value || '').trim();
+        if (!text) throw new Error('Dokumen tidak mengandung teks yang bisa dibaca.');
+        $('key-text').value = text;
+        setKeyMode('text');
+        info.textContent = '✓ ' + file.name + ' berhasil diekstrak (' + text.length + ' karakter). Teks siap diparse AI.';
+        toast('Teks .docx berhasil diekstrak.', 'success');
+      } catch (e) {
+        info.className = 'mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-300';
+        info.textContent = '✗ ' + e.message;
+        toast(e.message, 'error');
+      }
+    }
+    $('docx-input').addEventListener('change', (e) => { if (e.target.files[0]) handleDocx(e.target.files[0]); e.target.value = ''; });
+    bindDropzone('drop-docx', () => $('docx-input').click(), (files) => { if (files[0]) handleDocx(files[0]); });
+
+    function bindDropzone(id, onClick, onFiles) {
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener('click', (e) => { if (e.target && e.target.tagName === 'INPUT') return; onClick(e); });
+      el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drop-active'); });
+      el.addEventListener('dragleave', () => el.classList.remove('drop-active'));
+      el.addEventListener('drop', (e) => { e.preventDefault(); el.classList.remove('drop-active'); if (e.dataTransfer.files.length) onFiles(e.dataTransfer.files); });
+    }
+
+    $('btn-parse').addEventListener('click', async () => {
+      const text = $('key-text').value.trim();
+      if (!text) { toast('Masukkan teks kunci atau upload .docx terlebih dahulu.', 'error'); setKeyMode('text'); return; }
+      if (!state.apiKey && !state.demo) { toast('Atur API Key Gemini atau aktifkan Mode Demo.', 'error'); openApiModal(); return; }
+      const btn = $('btn-parse'), err = $('parse-error'), load = $('parse-loading');
+      btn.disabled = true; err.classList.add('hidden'); load.classList.remove('hidden');
+      $('parse-loading-text').textContent = state.demo ? 'Mode Demo: membaca pola nomor pada teks…' : 'Gemini sedang menyusun JSON kunci jawaban…';
+      try {
+        const parsed = normalizeKey(await parseKeyText(text));
+        state.keyData = parsed; persistKey(); renderKeyTables();
+        $('key-result').classList.remove('hidden');
+        state.maxStep = Math.max(state.maxStep, 2);
+        renderStepper();
+        const total = parsed.pg.length + parsed.menjodohkan.length + parsed.esai.length;
+        toast(total ? total + ' kunci berhasil terdeteksi. Silakan periksa.' : 'Tidak ada kunci terdeteksi. Tambahkan manual pada tabel.', total ? 'success' : 'info');
+      } catch (e) {
+        err.textContent = e.message; err.classList.remove('hidden');
+      } finally { btn.disabled = false; load.classList.add('hidden'); }
+    });
+
+    $('btn-to-step2').addEventListener('click', () => {
+      const total = state.keyData.pg.length + state.keyData.menjodohkan.length + state.keyData.esai.length;
+      if (!total) { toast('Minimal satu kunci jawaban diperlukan.', 'error'); return; }
+      state.maxStep = Math.max(state.maxStep, 2); setStep(2);
+    });
+    $('btn-back-step1').addEventListener('click', () => setStep(1));
+
+    /* ---------------------- Gambar, upload & kamera ---------------------- */
+    function resizeSource(source, w, h) {
+      const max = 1600;
+      const scale = Math.min(1, max / Math.max(w || 1, h || 1));
+      const nw = Math.max(1, Math.round(w * scale)), nh = Math.max(1, Math.round(h * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = nw; canvas.height = nh;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, nw, nh);
+      ctx.drawImage(source, 0, 0, nw, nh);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.86);
+      return { data: dataUrl.split(',')[1], mime: 'image/jpeg', dataUrl, width: nw, height: nh };
+    }
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Gambar tidak dapat dibaca. Coba file JPG/PNG lain.'));
+        img.src = src;
+      });
+    }
+
+    async function handleImageFile(file) {
+      if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) { toast('Gunakan file gambar JPG, PNG, atau WebP.', 'error'); return; }
+      if (file.size > 20 * 1024 * 1024) { toast('Ukuran gambar terlalu besar (maks. 20 MB).', 'error'); return; }
+      try {
+        const url = URL.createObjectURL(file);
+        const img = await loadImage(url);
+        const resized = resizeSource(img, img.naturalWidth, img.naturalHeight);
+        URL.revokeObjectURL(url);
+        setImage(Object.assign(resized, { name: file.name }));
+        toast('Foto LJK siap. ' + resized.width + '×' + resized.height + ' px.', 'success');
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    function setImage(data) {
+      state.image = data;
+      const prev = $('image-preview');
+      prev.src = data.dataUrl; prev.classList.remove('hidden');
+      $('camera-placeholder').classList.add('hidden');
+      $('camera-overlay').classList.add('hidden');
+      const info = $('image-info');
+      info.className = 'mt-2 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300';
+      info.textContent = '✓ ' + data.name + ' · ' + data.width + '×' + data.height + ' px · siap dikoreksi';
+      $('grade-validation').textContent = '';
+      updateSidebar();
+      stopCamera();
+    }
+
+    $('image-input').addEventListener('change', (e) => { if (e.target.files[0]) handleImageFile(e.target.files[0]); e.target.value = ''; });
+    bindDropzone('drop-image', () => $('image-input').click(), (files) => { if (files[0]) handleImageFile(files[0]); });
+
+    async function startCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('Browser tidak mendukung kamera. Gunakan upload gambar.', 'error'); return; }
+      try {
+        state.stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+        });
+        const v = $('camera-video');
+        v.srcObject = state.stream;
+        await v.play();
+        v.classList.remove('hidden');
+        $('camera-overlay').classList.remove('hidden');
+        $('camera-placeholder').classList.add('hidden');
+        $('btn-camera').classList.add('hidden');
+        $('btn-capture').classList.remove('hidden');
+        $('btn-stop-camera').classList.remove('hidden');
+        $('image-preview').classList.add('hidden');
+        $('image-info').classList.add('hidden');
+      } catch (e) {
+        const msg = e.name === 'NotAllowedError' ? 'Izin kamera ditolak. Izinkan kamera di browser, atau gunakan upload gambar.'
+          : e.name === 'NotFoundError' ? 'Kamera tidak ditemukan pada perangkat ini.'
+          : 'Kamera gagal dibuka (' + e.name + '). Catatan: kamera hanya bekerja di HTTPS atau localhost.';
+        toast(msg, 'error');
+      }
+    }
+
+    function stopCamera() {
+      if (state.stream) { state.stream.getTracks().forEach((t) => t.stop()); state.stream = null; }
+      const v = $('camera-video'); v.srcObject = null; v.classList.add('hidden');
+      $('camera-overlay').classList.add('hidden');
+      $('btn-camera').classList.remove('hidden');
+      $('btn-capture').classList.add('hidden');
+      $('btn-stop-camera').classList.add('hidden');
+      if (!state.image) $('camera-placeholder').classList.remove('hidden');
+    }
+
+    $('btn-camera').addEventListener('click', startCamera);
+    $('btn-stop-camera').addEventListener('click', stopCamera);
+    $('btn-capture').addEventListener('click', () => {
+      const v = $('camera-video');
+      if (!v.videoWidth) { toast('Kamera belum siap. Tunggu sebentar.', 'info'); return; }
+      try { setImage(Object.assign(resizeSource(v, v.videoWidth, v.videoHeight), { name: 'LJK-Kamera-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.jpg' })); toast('Foto LJK berhasil diambil.', 'success'); }
+      catch (e) { toast('Gagal mengambil foto: ' + e.message, 'error'); }
+    });
+
+    /* ---------------------------- Ready scan ---------------------------- */
+    function renderKeyMiniSummary() {
+      const d = state.keyData;
+      const chips = [
+        ['PG', d.pg.length, 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300'],
+        ['Menjodohkan', d.menjodohkan.length, 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300'],
+        ['Esai', d.esai.length, 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300']
+      ];
+      $('key-mini-summary').innerHTML = chips.map((c) => '<span class="chip ' + c[2] + '">' + c[0] + ': ' + c[1] + '</span>').join('');
+    }
+
+    $('btn-start-grade').addEventListener('click', () => startGrading());
+    $('btn-retry-grade').addEventListener('click', () => startGrading());
+    $('btn-back-step2').addEventListener('click', () => {
+      clearInterval(state.gradeTimer); state.grading = false; renderStepper(); setStep(2);
+    });
+
+    /* -------------------------- Proses koreksi AI ------------------------ */
+    const STAGE_MESSAGES = [
+      'Mengompres gambar dan menyiapkan kunci jawaban…',
+      'Mendeteksi bulatan / tanda silang pada PG & Menjodohkan (OMR)…',
+      'Membaca tulisan tangan siswa pada bagian esai (OCR)…',
+      'Membandingkan makna jawaban dengan kunci secara semantik (AI Grading)…',
+      'Menghitung skor, menyusun rincian, dan menyiapkan rekap…'
+    ];
+
+    function setStage(i) {
+      $$('.grade-stage').forEach((el, idx) => {
+        const dot = el.querySelector('.stage-dot');
+        const active = idx === i, done = idx < i;
+        dot.className = 'stage-dot h-2.5 w-2.5 rounded-full ' + (done ? 'bg-emerald-500' : active ? 'bg-indigo-500 ring-4 ring-indigo-500/20' : 'bg-slate-300 dark:bg-slate-700');
+        el.className = 'grade-stage flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition ' +
+          (active ? 'border-indigo-300 bg-indigo-50/70 text-indigo-800 dark:border-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200' : 'border-slate-200 dark:border-slate-800');
+      });
+      $('grade-bar').style.width = ((i + 1) * 20) + '%';
+      $('grade-status').textContent = STAGE_MESSAGES[i];
+    }
+
+    function finishStages() {
+      clearInterval(state.gradeTimer);
+      $$('.grade-stage').forEach((el) => {
+        el.className = 'grade-stage flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-500/5 dark:text-emerald-300';
+        el.querySelector('.stage-dot').className = 'stage-dot h-2.5 w-2.5 rounded-full bg-emerald-500';
+      });
+      $('grade-bar').style.width = '100%';
+    }
+
+    function buildGradingPrompt() {
+      const k = state.keyData;
+      const expected = {
+        pg: k.pg.map((r) => r.nomor),
+        menjodohkan: k.menjodohkan.map((r) => r.nomor),
+        esai: k.esai.map((r) => r.nomor)
+      };
+      return 'Kamu adalah korektor LEMBAR JAWABAN SISWA (LJK) yang sangat teliti, ahli OMR dan OCR tulisan tangan bahasa Indonesia.\n\n' +
+        'DATA KUNCI JAWABAN (sumber kebenaran — JANGAN diubah nomor, kunci, atau bobotnya):\n' +
+        JSON.stringify(k) + '\n\n' +
+        'NOMOR YANG WAJIB DINILAI: ' + JSON.stringify(expected) + '\n\n' +
+        'TUGAS:\n' +
+        '1. OMR: Untuk setiap nomor PG dan Menjodohkan, lihat bulatan yang dihitamkan / dicentang / tanda silang pada LJK. Tulis jawaban siswa persis sesuai pilihannya. Jika kosong, ragu, atau ada dua tanda, isi jawaban_siswa dengan "" dan beri catatan singkat.\n' +
+        '2. Bandingkan dengan kunci. Isi status "BENAR" atau "SALAH" (huruf besar).\n' +
+        '3. OCR: Baca tulisan tangan siswa pada bagian Esai. Transkripkan apa adanya pada jawaban_siswa (jangan mengarang jika tidak terbaca; tulis "[tidak terbaca]").\n' +
+        '4. AI GRADING SEMANTIK: Bandingkan MAKNA jawaban esai dengan kunci_jawaban. Beri skor proporsional 0 sampai bobot_maksimal (boleh desimal 0.5). Bukan sekadar cocok kata kunci — nilai pemahaman konsep. Status: "BENAR" jika skor ≥ 90% bobot, "PARTIAL" jika 0 < skor < 90% bobot, "SALAH" jika skor = 0. Beri catatan singkat (maks. 2 kalimat) berisi alasan skor dan poin yang kurang.\n' +
+        '5. Jika nama siswa terbaca di LJK, isi nama_terdeteksi. Jika tidak, isi "".\n' +
+        '6. Kembalikan tepat satu nomor untuk setiap nomor pada DATA KUNCI. Jangan menambah nomor baru.\n\n' +
+        'KEMBALIKAN JSON SAJA dengan format persis ini:\n' +
+        '{"pg":[{"nomor":1,"jawaban_siswa":"B","kunci":"B","status":"BENAR","catatan":""}],' +
+        '"menjodohkan":[{"nomor":1,"jawaban_siswa":"C","kunci":"C","status":"BENAR","catatan":""}],' +
+        '"esai":[{"nomor":1,"jawaban_siswa":"transkrip tulisan siswa","skor":7.5,"bobot_maksimal":10,"status":"PARTIAL","catatan":"Sebutkan 3 dari 4 poin; kurang poin retransmisi."}],' +
+        '"nama_terdeteksi":"Nama di LJK","catatan_umum":"catatan opsional untuk guru"}';
+    }
+
+    function demoGrade() {
+      const k = state.keyData;
+      const objAnswer = (r, i, offset) => {
+        const wrong = (r.nomor + offset) % 4 === 0;
+        let a = String(r.kunci || 'A').toUpperCase();
+        if (wrong) a = a === 'E' ? 'D' : String.fromCharCode(Math.min(90, a.charCodeAt(0) + 1));
+        return { jawaban_siswa: a, status: wrong ? 'SALAH' : 'BENAR', catatan: wrong ? 'Tanda bulatan tidak sesuai kunci.' : '' };
+      };
+      return {
+        pg: k.pg.map((r, i) => Object.assign({ nomor: r.nomor, kunci: r.kunci }, objAnswer(r, i, 0))),
+        menjodohkan: k.menjodohkan.map((r, i) => Object.assign({ nomor: r.nomor, kunci: r.kunci }, objAnswer(r, i, 2))),
+        esai: k.esai.map((r, i) => {
+          const ratio = [1, 0.6, 0.85, 0][i % 4];
+          const skor = round1(r.bobot_maksimal * ratio);
+          const status = skor <= 0 ? 'SALAH' : ratio >= 0.9 ? 'BENAR' : 'PARTIAL';
+          return {
+            nomor: r.nomor,
+            jawaban_siswa: '[Contoh OCR demo] ' + r.kunci_jawaban.slice(0, 75) + (r.kunci_jawaban.length > 75 ? '…' : ''),
+            skor, bobot_maksimal: r.bobot_maksimal, status,
+            catatan: ratio === 1 ? 'Semua poin kunci terpenuhi dengan makna yang tepat.' : ratio === 0 ? 'Jawaban tidak berkorelasi dengan kunci.' : 'Sebagian poin kunci benar, namun beberapa poin penting belum disebutkan.'
+          };
+        }),
+        nama_terdeteksi: state.student.nama,
+        catatan_umum: 'Hasil ini berasal dari MODE DEMO. Gunakan API Key Gemini untuk koreksi LJK yang sebenarnya.'
+      };
+    }
+
+    function normalizeGrading(raw, key) {
+      const findItem = (list, no) => Array.isArray(list)
+        ? list.find((x) => x && parseInt(x.nomor, 10) === no) || null
+        : null;
+
+      // Ekstrak token jawaban: "B", "(B)", "Jawaban: C", "bulatan D", atau teks pasangan.
+      const answerToken = (v) => {
+        const s = String(v == null ? '' : v).trim().toUpperCase();
+        const labeled = s.match(/(?:JAWABAN|PILIHAN|BULATAN|TANDA)\s*[:.]?\s*([A-E0-9]{1,3})\b/);
+        if (labeled) return labeled[1];
+        const standalone = s.match(/(?:^|[^A-Z0-9])([A-E0-9]{1,3})(?=$|[^A-Z0-9])/);
+        return standalone ? standalone[1] : s.replace(/[\s().\-]/g, '');
+      };
+
+      const out = {
+        pg: [], menjodohkan: [], esai: [],
+        nama_terdeteksi: String((raw && raw.nama_terdeteksi) || ''),
+        catatan_umum: String((raw && raw.catatan_umum) || '')
+      };
+
+      ['pg', 'menjodohkan'].forEach((g) => {
+        key[g].forEach((kr) => {
+          const found = findItem(raw && raw[g], kr.nomor);
+          const r = found || {};
+          const jawaban = String(r.jawaban_siswa == null ? '' : r.jawaban_siswa).trim();
+          const benar = !!jawaban && answerToken(jawaban) === answerToken(kr.kunci);
+          const autoNote = !found ? 'AI tidak mengembalikan penilaian nomor ini; ditandai SALAH.'
+            : !jawaban ? 'Jawaban siswa tidak terdeteksi / kosong.'
+            : benar ? '' : 'Jawaban tidak sesuai kunci.';
+          out[g].push({
+            nomor: kr.nomor, jawaban_siswa: jawaban, kunci: kr.kunci,
+            status: benar ? 'BENAR' : 'SALAH',
+            catatan: String(r.catatan || '').trim() || autoNote
+          });
+        });
+      });
+
+      key.esai.forEach((kr) => {
+        const found = findItem(raw && raw.esai, kr.nomor);
+        const r = found || {};
+        const bobot = kr.bobot_maksimal;
+        let skor = Math.round(clamp(num(r.skor, 0), 0, bobot) * 2) / 2;
+        let status = String(r.status || '').toUpperCase();
+        if (!['BENAR', 'PARTIAL', 'SALAH'].includes(status))
+          status = skor <= 0 ? 'SALAH' : skor >= bobot * 0.9 ? 'BENAR' : 'PARTIAL';
+        const autoNote = !found ? 'AI tidak mengembalikan penilaian nomor ini; ditandai SALAH.'
+          : status === 'BENAR' ? 'Makna jawaban sesuai kunci.'
+          : status === 'SALAH' ? 'Tidak ada kesesuaian makna dengan kunci.'
+          : 'Sebagian makna sesuai kunci.';
+        out.esai.push({
+          nomor: kr.nomor,
+          jawaban_siswa: String(r.jawaban_siswa == null ? '' : r.jawaban_siswa).trim() || '[tidak terbaca]',
+          kunci: kr.kunci_jawaban,
+          skor, bobot_maksimal: bobot, status,
+          catatan: String(r.catatan || '').trim() || autoNote
+        });
+      });
+      return out;
+    }
+
+    function computeScore(result) {
+      const b = state.bobotObjektif;
+      const benar = result.pg.filter((r) => r.status === 'BENAR').length + result.menjodohkan.filter((r) => r.status === 'BENAR').length;
+      const salah = result.pg.filter((r) => r.status === 'SALAH').length + result.menjodohkan.filter((r) => r.status === 'SALAH').length;
+      const skorEsai = round1(result.esai.reduce((s, r) => s + r.skor, 0));
+      const maxObj = (result.pg.length + result.menjodohkan.length) * b;
+      const maxEsai = round1(result.esai.reduce((s, r) => s + r.bobot_maksimal, 0));
+      const totalMax = maxObj + maxEsai;
+      const obtained = benar * b + skorEsai;
+      const nilai = totalMax > 0 ? round1(clamp(obtained / totalMax * 100, 0, 100)) : 0;
+      const pgBenar = result.pg.filter((r) => r.status === 'BENAR').length;
+      const mjBenar = result.menjodohkan.filter((r) => r.status === 'BENAR').length;
+      return {
+        benar, salah, skorEsai, maxObj, maxEsai, totalMax, obtained: round1(obtained), nilai, bobot: b,
+        pgBenar, pgSalah: result.pg.length - pgBenar,
+        mjBenar, mjSalah: result.menjodohkan.length - mjBenar
+      };
+    }
+
+    async function startGrading() {
+      const v = $('grade-validation');
+      if (!state.image) { v.textContent = '⚠ Foto LJK belum diunggah.'; setStep(2); return; }
+      if (!$('student-name').value.trim()) { v.textContent = '⚠ Nama siswa wajib diisi.'; setStep(2); $('student-name').focus(); return; }
+      const total = state.keyData.pg.length + state.keyData.menjodohkan.length + state.keyData.esai.length;
+      if (!total) { v.textContent = '⚠ Kunci jawaban belum tersedia.'; setStep(1); return; }
+      if (!state.apiKey && !state.demo) { toast('Atur API Key Gemini atau aktifkan Mode Demo.', 'error'); openApiModal(); return; }
+
+      state.student = {
+        nama: $('student-name').value.trim(),
+        kelas: $('student-class').value,
+        nis: $('student-nis').value.trim()
+      };
+      v.textContent = '';
+      state.grading = true;
+      setStep(3);
+      $('grade-error').classList.add('hidden');
+      $('btn-retry-grade').classList.add('hidden');
+      $('btn-back-step2').classList.add('hidden');
+      $('grade-headline').textContent = state.demo ? 'Simulasi koreksi sedang berjalan…' : 'AI sedang membaca LJK…';
+      $('grade-bar').style.width = '0%';
+      let i = 0; setStage(0);
+      state.gradeTimer = setInterval(() => { i = Math.min(i + 1, 4); setStage(i); }, 2600);
+
+      try {
+        let raw;
+        if (state.demo) {
+          await new Promise((r) => setTimeout(r, 2600));
+          raw = demoGrade();
+        } else {
+          raw = await geminiRequest(buildGradingPrompt(), state.image, true);
+        }
+        const result = normalizeGrading(raw, state.keyData);
+        result.meta = computeScore(result);
+        result.student = Object.assign({}, state.student);
+        result.waktu = new Date().toISOString();
+        result.demo = state.demo;
+        result.saved = false;
+        state.result = result;
+        finishStages();
+        state.grading = false;
+        renderStepper();
+        renderResult();
+        setTimeout(() => setStep(4), 450);
+      } catch (e) {
+        clearInterval(state.gradeTimer);
+        state.grading = false;
+        renderStepper();
+        $('grade-error').textContent = '✗ ' + e.message;
+        $('grade-error').classList.remove('hidden');
+        $('grade-headline').textContent = 'Koreksi gagal';
+        $('grade-status').textContent = 'Periksa pesan error di bawah, lalu coba lagi.';
+        $('btn-retry-grade').classList.remove('hidden');
+        $('btn-back-step2').classList.remove('hidden');
+      } finally {
+        clearInterval(state.gradeTimer);
+        state.grading = false;
+        renderStepper();
+      }
+    }
+
+    /* -------------------------- Tampilan hasil -------------------------- */
+    function initials(name) {
+      return String(name || '?').trim().split(/\s+/).slice(0, 2).map((s) => s[0] || '').join('').toUpperCase() || '?';
+    }
+
+    function statusBadge(status) {
+      const map = {
+        BENAR: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+        SALAH: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
+        PARTIAL: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
+      };
+      return '<span class="chip ' + (map[status] || map.SALAH) + '">' + (status === 'PARTIAL' ? '◐' : status === 'BENAR' ? '✓' : '✕') + ' ' + escapeHtml(status) + '</span>';
+    }
+
+    function summaryCard(label, value, sub, color, iconSvg) {
+      return '<div class="card-soft p-4"><div class="flex items-start justify-between gap-2">' +
+        '<div><p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">' + label + '</p>' +
+        '<p class="mt-2 text-3xl font-extrabold tracking-tight ' + color + '">' + escapeHtml(value) + '</p>' +
+        '<p class="mt-1 text-[11px] text-slate-400">' + escapeHtml(sub) + '</p></div>' +
+        '<div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg ' + color + ' opacity-80"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5">' + iconSvg + '</svg></div></div></div>';
+    }
+
+    function renderResult() {
+      const r = state.result; if (!r) return;
+      const m = r.meta;
+      $('result-avatar').textContent = initials(r.student.nama);
+      $('result-title').textContent = r.student.nama;
+      $('result-subtitle').textContent = 'Kelas ' + r.student.kelas + (r.student.nis ? ' · NIS ' + r.student.nis : '') + ' · ' + (state.demo ? 'Simulasi AI' : state.model);
+      $('result-demo-flag').classList.toggle('hidden', !r.demo);
+      $('result-time').textContent = new Date(r.waktu).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+
+      $('summary-cards').innerHTML = [
+        summaryCard('Jumlah Benar', m.benar, 'PG + Menjodohkan', 'text-emerald-600 dark:text-emerald-400', '<path d="m20 6-11 11-5-5"/>'),
+        summaryCard('Jumlah Salah', m.salah, 'PG + Menjodohkan', 'text-rose-600 dark:text-rose-400', '<path d="M18 6 6 18M6 6l12 12"/>'),
+        summaryCard('Total Skor Esai', m.skorEsai + ' / ' + m.maxEsai, r.esai.length + ' soal uraian', 'text-amber-600 dark:text-amber-400', '<path d="M12 20h9M4 20h4l10-10-4-4L4 16v4Z"/><path d="m13 7 4 4"/>'),
+        summaryCard('Nilai Akhir', m.nilai, 'Skala 0 – 100', 'text-indigo-600 dark:text-indigo-400', '<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/>')
+      ].join('');
+      $('nilai-label').textContent = m.nilai + ' / 100';
+      $('nilai-bar').style.width = m.nilai + '%';
+      $('nilai-formula').textContent = 'Perolehan ' + m.obtained + ' dari ' + m.totalMax + ' poin maksimal · bobot soal objektif ' + m.bobot + ' · esai ' + m.maxEsai + ' poin';
+
+      const warn = $('result-warning');
+      const notes = [];
+      if (r.nama_terdeteksi && r.nama_terdeteksi.toLowerCase().replace(/\s+/g, '') !== r.student.nama.toLowerCase().replace(/\s+/g, ''))
+        notes.push('Nama terdeteksi di LJK: <strong>' + escapeHtml(r.nama_terdeteksi) + '</strong> — berbeda dengan data input: <strong>' + escapeHtml(r.student.nama) + '</strong>. Mohon dicek kembali.');
+      if (r.catatan_umum) notes.push(escapeHtml(r.catatan_umum));
+      if (notes.length) { warn.innerHTML = '⚠️ ' + notes.join('<br>'); warn.classList.remove('hidden'); }
+      else warn.classList.add('hidden');
+
+      const saveBtn = $('btn-save-result');
+      saveBtn.disabled = !!r.saved;
+      saveBtn.innerHTML = r.saved ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><path d="M20 6 9 17l-5-5"/></svg>Tersimpan di Rekap' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><path d="M20 6 9 17l-5-5"/></svg>Simpan ke Daftar Nilai';
+
+      state.filter = 'semua';
+      renderResultDetail();
+    }
+
+    function resultRow(item, type) {
+      const isEsai = type === 'esai';
+      const compare = isEsai
+        ? '<div class="grid gap-2 sm:grid-cols-2"><div class="rounded-lg bg-slate-50 p-2.5 dark:bg-slate-950/50"><p class="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Jawaban siswa (OCR)</p><p class="whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-700 dark:text-slate-200">' + escapeHtml(item.jawaban_siswa) + '</p></div>' +
+          '<div class="rounded-lg bg-slate-50 p-2.5 dark:bg-slate-950/50"><p class="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Kunci jawaban</p><p class="whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-700 dark:text-slate-200">' + escapeHtml(item.kunci) + '</p></div></div>' +
+          '<div class="mt-2 flex flex-wrap items-center gap-2"><span class="chip ' + (item.status === 'SALAH' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300' : item.status === 'BENAR' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300') + '">Skor ' + item.skor + ' / ' + item.bobot_maksimal + '</span>' +
+          (item.catatan ? '<span class="text-[11px] italic text-slate-500 dark:text-slate-400">“' + escapeHtml(item.catatan) + '”</span>' : '') + '</div>'
+        : '<div class="flex flex-wrap items-center gap-2 text-xs"><span class="rounded-lg bg-slate-100 px-2.5 py-1.5 dark:bg-slate-800"><span class="text-slate-400">Siswa: </span><strong class="' + (item.status === 'BENAR' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400') + '">' + (escapeHtml(item.jawaban_siswa) || '—') + '</strong></span>' +
+          '<span class="text-slate-400">vs</span><span class="rounded-lg bg-slate-100 px-2.5 py-1.5 dark:bg-slate-800"><span class="text-slate-400">Kunci: </span><strong class="text-slate-700 dark:text-slate-200">' + escapeHtml(item.kunci) + '</strong></span>' +
+          (item.catatan && item.status === 'SALAH' ? '<span class="text-[11px] italic text-slate-400">' + escapeHtml(item.catatan) + '</span>' : '') + '</div>';
+      return '<div class="flex gap-3 rounded-xl border border-slate-200 p-3 transition hover:border-indigo-200 dark:border-slate-800 dark:hover:border-indigo-900">' +
+        '<div class="min-w-0 flex-1"><div class="mb-2 flex flex-wrap items-center gap-2">' + statusBadge(item.status) + '<span class="text-sm font-bold text-slate-700 dark:text-slate-200">No. ' + item.nomor + '</span></div>' + compare + '</div></div>';
+    }
+
+    function renderResultDetail() {
+      const r = state.result; if (!r) return;
+      const defs = [
+        { key: 'pg', title: 'A. Pilihan Ganda', icon: 'M4 6h16M4 12h16M4 18h10' },
+        { key: 'menjodohkan', title: 'B. Menjodohkan', icon: 'M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01' },
+        { key: 'esai', title: 'C. Esai / Uraian', icon: 'M4 6h16M4 11h16M4 16h10' }
+      ];
+      let html = '';
+      defs.forEach((d) => {
+        const items = r[d.key]; if (!items || !items.length) return;
+        let filtered = items;
+        if (state.filter === 'benar') filtered = items.filter((x) => x.status === 'BENAR');
+        else if (state.filter === 'salah') filtered = items.filter((x) => x.status === 'SALAH');
+        else if (state.filter === 'esai' && d.key !== 'esai') filtered = [];
+        if (!filtered.length) return;
+        const benar = items.filter((x) => x.status === 'BENAR').length;
+        html += '<div><div class="mb-3 flex flex-wrap items-center gap-2"><div class="grid h-7 w-7 place-items-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><path d="' + d.icon + '"/></svg></div>' +
+          '<h4 class="text-sm font-bold">' + d.title + '</h4><span class="chip bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">' + benar + '/' + items.length + ' benar</span></div>' +
+          '<div class="' + (d.key === 'esai' ? 'space-y-2' : 'space-y-2 2xl:grid 2xl:grid-cols-2 2xl:gap-2 2xl:space-y-0') + '">' + filtered.map((it) => resultRow(it, d.key)).join('') + '</div></div>';
+      });
+      $('result-detail').innerHTML = html || '<p class="py-8 text-center text-sm text-slate-400">Tidak ada item yang cocok dengan filter ini.</p>';
+      $$('.result-filter').forEach((b) => {
+        const active = b.dataset.filter === state.filter;
+        b.className = 'result-filter rounded-md px-2.5 py-1.5 text-xs font-bold transition ' + (active ? 'bg-white text-indigo-700 shadow-sm dark:bg-slate-700 dark:text-indigo-200' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400');
+      });
+    }
+
+    $$('.result-filter').forEach((b) => b.addEventListener('click', () => { state.filter = b.dataset.filter; renderResultDetail(); }));
+
+    /* --------------------------- Rekap & CSV ---------------------------- */
+    function filteredRekap() {
+      const q = state.rekapSearch.trim().toLowerCase();
+      return state.rekap.filter((r) =>
+        (!state.rekapKelas || r.kelas === state.rekapKelas) &&
+        (!q || (String(r.nama) + ' ' + String(r.nis || '')).toLowerCase().includes(q))
+      );
+    }
+
+    function renderRekapStats() {
+      const vals = state.rekap.map((r) => num(r.nilai, 0));
+      const avg = vals.length ? round1(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+      const max = vals.length ? Math.max.apply(null, vals) : 0;
+      const min = vals.length ? Math.min.apply(null, vals) : 0;
+      const cards = [
+        ['Jumlah Siswa', state.rekap.length, 'text-indigo-600 dark:text-indigo-400'],
+        ['Rata-rata Nilai', avg, 'text-violet-600 dark:text-violet-400'],
+        ['Nilai Tertinggi', max, 'text-emerald-600 dark:text-emerald-400'],
+        ['Nilai Terendah', min, 'text-rose-600 dark:text-rose-400']
+      ];
+      $('rekap-stats').innerHTML = cards.map((c) =>
+        '<div class="card-soft p-3"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">' + c[0] + '</p>' +
+        '<p class="mt-1 text-2xl font-extrabold ' + c[2] + '">' + c[1] + '</p></div>'
+      ).join('');
+    }
+
+    function renderRekap() {
+      const list = filteredRekap();
+      $('rekap-body').innerHTML = list.map((r, i) =>
+        '<tr class="border-b border-slate-100 dark:border-slate-800/70">' +
+        '<td class="td text-slate-400">' + (i + 1) + '</td>' +
+        '<td class="td"><span class="font-semibold">' + escapeHtml(r.nama) + '</span>' + (r.nis ? '<span class="ml-2 text-[11px] text-slate-400">' + escapeHtml(r.nis) + '</span>' : '') + (r.demo ? '<span class="ml-2 text-[10px] text-amber-500">DEMO</span>' : '') + '</td>' +
+        '<td class="td">' + escapeHtml(r.kelas) + '</td>' +
+        '<td class="td text-center font-bold text-emerald-600 dark:text-emerald-400">' + (num(r.pgBenar, 0) + num(r.mjBenar, 0)) + '</td>' +
+        '<td class="td text-center font-bold text-rose-600 dark:text-rose-400">' + (num(r.pgSalah, 0) + num(r.mjSalah, 0)) + '</td>' +
+        '<td class="td text-center">' + r.skorEsai + '</td>' +
+        '<td class="td text-center"><span class="chip ' + (r.nilai >= 75 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' : r.nilai >= 50 ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300') + '">' + r.nilai + '</span></td>' +
+        '<td class="td text-[11px] text-slate-500 dark:text-slate-400">' + escapeHtml(new Date(r.waktu).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })) + '</td>' +
+        '<td class="td text-right whitespace-nowrap">' +
+        '<button data-detail-rekap="' + escapeHtml(r.id) + '" class="rounded-lg px-2 py-1 text-xs font-bold text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10" title="Lihat rincian">Detail</button>' +
+        '<button data-del-rekap="' + escapeHtml(r.id) + '" class="rounded-lg px-2 py-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40" title="Hapus baris">✕</button></td></tr>'
+      ).join('');
+      $('rekap-empty').classList.toggle('hidden', state.rekap.length > 0);
+      $('rekap-filter-info').textContent = state.rekap.length ? list.length + ' dari ' + state.rekap.length + ' siswa' : '';
+      const emptyText = $('rekap-empty');
+      if (state.rekap.length) {
+        emptyText.querySelector('p').textContent = 'Tidak ada siswa yang cocok dengan filter.';
+      } else {
+        emptyText.querySelector('p').textContent = 'Belum ada nilai tersimpan';
+      }
+      renderRekapStats();
+      updateSidebar();
+    }
+
+    $('rekap-search').addEventListener('input', (e) => { state.rekapSearch = e.target.value; renderRekap(); });
+    $('rekap-kelas').addEventListener('change', (e) => { state.rekapKelas = e.target.value; renderRekap(); });
+
+    $('rekap-body').addEventListener('click', (e) => {
+      const del = e.target.closest('[data-del-rekap]');
+      if (del) {
+        if (!confirm('Hapus baris nilai ini dari rekap?')) return;
+        state.rekap = state.rekap.filter((r) => r.id !== del.dataset.delRekap);
+        persistRekap(); renderRekap(); toast('Baris nilai dihapus.', 'info');
+        return;
+      }
+      const det = e.target.closest('[data-detail-rekap]');
+      if (det) openDetail(det.dataset.detailRekap);
+    });
+
+    function persistRekap() {
+      const payload = JSON.stringify(state.rekap);
+      if (payload.length > 2000000) {
+        state.rekap.forEach((r) => { delete r.detail; });
+        safeSet(STORE.rekap, JSON.stringify(state.rekap));
+        toast('Kapasitas penyimpanan penuh: rincian dibuang, ringkasan nilai tetap tersimpan.', 'info');
+      } else {
+        safeSet(STORE.rekap, payload);
+      }
+    }
+
+    $('btn-save-result').addEventListener('click', () => {
+      const r = state.result; if (!r || r.saved) return;
+      const row = {
+        id: 'R' + Date.now() + Math.random().toString(36).slice(2, 6),
+        nama: r.student.nama, kelas: r.student.kelas, nis: r.student.nis,
+        benar: r.meta.benar, salah: r.meta.salah, skorEsai: r.meta.skorEsai,
+        pgBenar: r.meta.pgBenar, pgSalah: r.meta.pgSalah,
+        mjBenar: r.meta.mjBenar, mjSalah: r.meta.mjSalah,
+        nilai: r.meta.nilai, waktu: r.waktu, demo: !!r.demo,
+        detail: { pg: r.pg, menjodohkan: r.menjodohkan, esai: r.esai }
+      };
+      state.rekap.unshift(row);
+      persistRekap();
+      r.saved = true; renderRekap(); renderResult();
+      toast('Nilai ' + row.nama + ' tersimpan di rekap (' + row.nilai + ').', 'success');
+    });
+
+    $('btn-clear-rekap').addEventListener('click', () => {
+      if (!state.rekap.length) { toast('Rekap masih kosong.', 'info'); return; }
+      if (!confirm('Hapus seluruh daftar nilai pada sesi ini? Tindakan ini tidak dapat dibatalkan.')) return;
+      state.rekap = []; persistRekap(); renderRekap(); toast('Rekap dikosongkan.', 'info');
+    });
+
+    function downloadCSV(rows, filename) {
+      if (!rows.length) { toast('Belum ada data untuk diekspor.', 'info'); return; }
+      const csv = '\uFEFF' + rows.map((row) => row.map((v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    function rowToCsv(r, index) {
+      return [index, r.nama, r.kelas, r.nis || '', num(r.pgBenar, 0), num(r.pgSalah, 0), num(r.mjBenar, 0), num(r.mjSalah, 0),
+        r.skorEsai, r.nilai, new Date(r.waktu).toLocaleString('id-ID')];
+    }
+
+    function exportCSV() {
+      const rows = [['No', 'Nama Siswa', 'Kelas', 'NIS', 'PG Benar', 'PG Salah', 'Menjodohkan Benar', 'Menjodohkan Salah', 'Skor Esai', 'Nilai Akhir', 'Waktu Koreksi']];
+      const list = filteredRekap().slice().reverse();
+      list.forEach((r, i) => rows.push(rowToCsv(r, i + 1)));
+      const r = state.result;
+      if (r && !r.saved && (!state.rekapSearch && !state.rekapKelas || r.student.kelas === state.rekapKelas)) {
+        rows.push(rowToCsv({
+          nama: r.student.nama + ' (belum disimpan)', kelas: r.student.kelas, nis: r.student.nis,
+          pgBenar: r.meta.pgBenar, pgSalah: r.meta.pgSalah, mjBenar: r.meta.mjBenar, mjSalah: r.meta.mjSalah,
+          skorEsai: r.meta.skorEsai, nilai: r.meta.nilai, waktu: r.waktu
+        }, list.length + 1));
+      }
+      if (rows.length === 1) { toast('Belum ada nilai untuk diekspor.', 'info'); return; }
+      downloadCSV(rows, 'rekap-nilai-ljk-' + new Date().toISOString().slice(0, 10) + '.csv');
+      toast('Rekap diekspor ke CSV (bisa dibuka di Excel).', 'success');
+    }
+    $('btn-export-1').addEventListener('click', exportCSV);
+    $('btn-export-2').addEventListener('click', exportCSV);
+
+    /* --------------------------- Detail rekap --------------------------- */
+    function openDetail(id) {
+      const row = state.rekap.find((r) => r.id === id);
+      if (!row) return;
+      state.activeDetailId = id;
+      $('detail-title').textContent = row.nama;
+      $('detail-subtitle').textContent = 'Kelas ' + row.kelas + (row.nis ? ' · NIS ' + row.nis : '') + ' · ' +
+        new Date(row.waktu).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+
+      const stats = [
+        ['Nilai Akhir', row.nilai + ' / 100', 'text-indigo-600 dark:text-indigo-400'],
+        ['Benar', (num(row.pgBenar, 0) + num(row.mjBenar, 0)), 'text-emerald-600 dark:text-emerald-400'],
+        ['Salah', (num(row.pgSalah, 0) + num(row.mjSalah, 0)), 'text-rose-600 dark:text-rose-400'],
+        ['Skor Esai', row.skorEsai, 'text-amber-600 dark:text-amber-400']
+      ];
+      let html = '<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">' + stats.map((s) =>
+        '<div class="card-soft p-3"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">' + s[0] + '</p>' +
+        '<p class="mt-1 text-xl font-extrabold ' + s[2] + '">' + escapeHtml(s[1]) + '</p></div>'
+      ).join('') + '</div>';
+
+      if (!row.detail) {
+        html += '<p class="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">Rincian per soal tidak tersimpan (kapasitas browser penuh). Ringkasan nilai tetap tersedia.</p>';
+      } else {
+        const defs = [
+          ['pg', 'A. Pilihan Ganda'], ['menjodohkan', 'B. Menjodohkan'], ['esai', 'C. Esai / Uraian']
+        ];
+        defs.forEach((d) => {
+          const items = row.detail[d[0]] || [];
+          if (!items.length) return;
+          html += '<div><h4 class="mb-2 text-sm font-bold">' + d[1] + '</h4><div class="space-y-2">' +
+            items.map((it) => resultRow(it, d[0])).join('') + '</div></div>';
+        });
+      }
+      $('detail-content').innerHTML = html;
+      $('detail-modal').classList.remove('hidden');
+      $('detail-modal').classList.add('flex');
+    }
+
+    function closeDetail() {
+      $('detail-modal').classList.add('hidden');
+      $('detail-modal').classList.remove('flex');
+      state.activeDetailId = '';
+    }
+    $('btn-close-detail').addEventListener('click', closeDetail);
+    $('detail-modal').addEventListener('click', (e) => { if (e.target === $('detail-modal')) closeDetail(); });
+    $('btn-detail-export').addEventListener('click', () => {
+      const row = state.rekap.find((r) => r.id === state.activeDetailId); if (!row) return;
+      const rows = [['Bagian', 'Nomor', 'Jawaban Siswa', 'Kunci', 'Status', 'Skor', 'Bobot Maks', 'Catatan']];
+      if (row.detail) {
+        [['PG', 'pg'], ['Menjodohkan', 'menjodohkan'], ['Esai', 'esai']].forEach((g) => {
+          (row.detail[g[1]] || []).forEach((it) => rows.push([
+            g[0], it.nomor, it.jawaban_siswa, it.kunci, it.status,
+            g[1] === 'esai' ? it.skor : '', g[1] === 'esai' ? it.bobot_maksimal : '', it.catatan || ''
+          ]));
+        });
+      }
+      rows.push(['RINGKASAN', '', '', '', 'NILAI AKHIR', row.nilai, 100, row.nama + ' / ' + row.kelas]);
+      downloadCSV(rows, 'rincian-nilai-' + row.nama.replace(/[^\w\-]+/g, '-') + '.csv');
+      toast('Rincian nilai diekspor ke CSV.', 'success');
+    });
+
+    $('btn-new-scan').addEventListener('click', () => {
+      stopCamera();
+      state.image = null; state.result = null; state.filter = 'semua';
+      $('image-preview').classList.add('hidden');
+      $('image-preview').removeAttribute('src');
+      $('image-info').classList.add('hidden');
+      $('camera-placeholder').classList.remove('hidden');
+      $('student-name').value = ''; $('student-nis').value = '';
+      $('grade-validation').textContent = '';
+      state.maxStep = Math.max(state.maxStep, 2);
+      updateSidebar(); setStep(2);
+    });
+
+    /* ------------------------ Template LJK cetak ------------------------ */
+    function buildPrintHtml() {
+      const letters = ['A', 'B', 'C', 'D', 'E'];
+      const pg = Array.from({ length: 40 }, (_, i) =>
+        '<div class="pgrow"><b>' + (i + 1) + '.</b>' + letters.map((l) => '<span class="bub"><i></i><em>' + l + '</em></span>').join('') + '</div>'
+      ).join('');
+      const mjLeft = Array.from({ length: 10 }, (_, i) => '<div class="mjrow"><b>' + (i + 1) + '.</b> <span class="line"></span> <span class="bub"><i></i></span></div>').join('');
+      const mjRight = Array.from({ length: 10 }, (_, i) => '<div class="mjrow"><span class="bub"><i></i></span> <b>' + String.fromCharCode(65 + i) + '.</b> <span class="line"></span></div>').join('');
+      const esai = Array.from({ length: 10 }, (_, i) =>
+        '<div class="esairow"><b>' + (i + 1) + '.</b><div class="wr"><span></span><span></span><span></span></div></div>'
+      ).join('');
+      return '<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Template LJK Standar</title>' +
+        '<style>' +
+        '@page{size:A4;margin:12mm}' +
+        '*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;font-size:11px}' +
+        '.noprint{position:sticky;top:0;background:#eef2ff;border-bottom:1px solid #c7d2fe;padding:10px 16px;display:flex;gap:10px;align-items:center}' +
+        '.noprint button{background:#4f46e5;color:#fff;border:0;border-radius:6px;padding:8px 14px;font-weight:700;cursor:pointer}' +
+        '.noprint span{font-weight:700;color:#3730a3}' +
+        '.wrap{max-width:190mm;margin:16px auto;padding:0 4mm}' +
+        'h1{text-align:center;font-size:17px;letter-spacing:1.5px;margin:0 0 2px;text-transform:uppercase}' +
+        '.sub{text-align:center;font-size:10px;color:#555;margin-bottom:12px}' +
+        '.ident{width:100%;border-collapse:collapse;margin-bottom:10px}' +
+        '.ident td{border:1px solid #111;padding:6px 8px;height:28px;font-size:11px}' +
+        '.ident td.lb{width:70px;font-weight:700;background:#f3f4f6}' +
+        '.ident td.lb2{width:55px;font-weight:700;background:#f3f4f6}' +
+        '.petunjuk{border:1px solid #111;padding:7px 10px;font-size:10px;line-height:1.5;margin-bottom:12px;background:#fafafa}' +
+        'h2{font-size:12px;margin:14px 0 7px;padding:4px 8px;background:#111;color:#fff;letter-spacing:.5px}' +
+        '.pgwrap{column-count:2;column-gap:26px}' +
+        '.pgrow{break-inside:avoid;display:grid;grid-template-columns:28px repeat(5,1fr);align-items:center;border-bottom:1px dotted #bbb;height:21px}' +
+        '.pgrow b{font-size:11px}.bub{display:inline-flex;align-items:center;gap:3px}' +
+        '.bub i{display:inline-block;width:12px;height:12px;border:1.4px solid #111;border-radius:50%;background:#fff}' +
+        '.bub em{font-style:normal;font-size:10px}' +
+        '.mj{display:grid;grid-template-columns:1fr 1fr;gap:26px}' +
+        '.mjrow{display:flex;align-items:center;gap:6px;height:24px;border-bottom:1px dotted #bbb}' +
+        '.mjrow .line{flex:1;border-bottom:1px solid #bbb;height:1px}' +
+        '.esairow{display:flex;gap:8px;break-inside:avoid;margin-bottom:6px}' +
+        '.esairow>b{width:18px;flex:none;padding-top:2px}.wr{flex:1}' +
+        '.wr span{display:block;height:22px;border-bottom:1px solid #999}' +
+        '.foot{margin-top:18px;display:flex;justify-content:space-between;font-size:10px}' +
+        '@media print{.noprint{display:none}.wrap{margin:0;padding:0}h2{background:#111!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}a{color:inherit}}' +
+        '</style></head><body>' +
+        '<div class="noprint"><span>Template LJK Standar</span><button onclick="window.print()">🖨 Cetak (Ctrl+P)</button><small>40 PG · 10 Menjodohkan · 10 Esai · kertas A4</small></div>' +
+        '<div class="wrap">' +
+        '<h1>Lembar Jawaban Siswa (LJK)</h1>' +
+        '<div class="sub">Sistem Koreksi Otomatis · OMR + OCR + AI Grading — hitamkan bulatan dengan pensil</div>' +
+        '<table class="ident"><tr><td class="lb">Nama</td><td></td><td class="lb2">Kelas</td><td style="width:110px"></td><td class="lb2">Tanggal</td><td style="width:100px"></td></tr>' +
+        '<tr><td class="lb">Mata Pelajaran</td><td colspan="3"></td><td class="lb2">NIS</td><td></td></tr></table>' +
+        '<div class="petunjuk"><b>PETUNJUK:</b> (1) Isi identitas dengan jelas menggunakan tinta hitam. (2) Untuk Pilihan Ganda & Menjodohkan, hitamkan bulatan pilihan Anda — jangan dicentang atau dicoret. (3) Jika ingin mengganti jawaban, hapus dengan penghapus bersih. (4) Untuk Esai, tulis dengan tulisan tangan yang jelas dan terbaca. (5) Jangan berlipat atau merusak lembar ini.</div>' +
+        '<h2>A. PILIHAN GANDA (1 – 40)</h2><div class="pgwrap">' + pg + '</div>' +
+        '<h2>B. MENJODOHKAN (1 – 10)</h2><div class="mj"><div>' + mjLeft + '</div><div>' + mjRight + '</div></div>' +
+        '<h2>C. ESAI / URAIAN (1 – 10)</h2>' + esai +
+        '<div class="foot"><span>Disetujui Guru: ................................</span><span>Paraf Siswa: ................................</span></div>' +
+        '</div></body></html>';
+    }
+
+    function openPrintTemplate() {
+      const html = buildPrintHtml();
+      const w = window.open('', '_blank');
+      if (w) {
+        w.document.open(); w.document.write(html); w.document.close(); w.focus();
+      } else {
+        $('print-iframe').srcdoc = html;
+        $('print-fallback').classList.remove('hidden');
+      }
+    }
+    $('btn-print-template').addEventListener('click', openPrintTemplate);
+    $('btn-print-template-side').addEventListener('click', openPrintTemplate);
+    $('btn-print-fallback').addEventListener('click', () => { try { $('print-iframe').contentWindow.focus(); $('print-iframe').contentWindow.print(); } catch (e) { window.print(); } });
+    $('btn-close-print').addEventListener('click', () => $('print-fallback').classList.add('hidden'));
+
+    /* ------------------------------- Init ------------------------------- */
+    const savedTheme = safeGet(STORE.theme, '');
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyTheme(savedTheme ? savedTheme === 'dark' : prefersDark);
+    setKeyMode('docx');
+    const totalKey = state.keyData.pg.length + state.keyData.menjodohkan.length + state.keyData.esai.length;
+    if (totalKey) { renderKeyTables(); $('key-result').classList.remove('hidden'); }
+    renderStepper(); renderRekap(); renderKeyMiniSummary();
+    window.addEventListener('beforeunload', stopCamera);
+    console.info('%cLJK Vision AI siap.', 'color:#6366f1;font-weight:bold');
+
+    })();
+  </script>
+
+</body>
+</html>
