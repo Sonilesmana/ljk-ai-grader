@@ -87,10 +87,6 @@
 
       <div class="ml-auto flex items-center gap-2">
         <span id="demo-badge" class="chip hidden bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">MODE DEMO</span>
-        <button id="btn-print-template" class="btn btn-ghost hidden px-3 py-2 sm:inline-flex" title="Cetak template LJK kosong">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 15h12v6H6z"/></svg>
-          <span class="hidden lg:inline">Template LJK</span>
-        </button>
         <button id="btn-api" class="btn btn-ghost px-3 py-2">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="m15 7 5 5-5 5M9 17l-5-5 5-5"/></svg>
           <span class="hidden sm:inline">API Key</span>
@@ -392,7 +388,7 @@
           <div class="card flex flex-wrap items-center gap-3 p-5">
             <p class="mr-auto text-xs text-slate-500 dark:text-slate-400">Simpan nilai ke rekap sesi ini sebelum koreksi siswa berikutnya.</p>
             <button id="btn-new-scan" class="btn btn-ghost">Koreksi LJK Lain</button>
-            <button id="btn-export-1" class="btn btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"/></svg>Export CSV</button>
+            <button id="btn-export-1" class="btn btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"/></svg>Export Excel</button>
             <button id="btn-save-result" class="btn btn-emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><path d="M20 6 9 17l-5-5"/></svg>Simpan ke Daftar Nilai</button>
           </div>
         </section>
@@ -415,18 +411,9 @@
             <li class="flex gap-2"><span class="font-bold text-indigo-600 dark:text-indigo-400">01</span><span>Siapkan kunci jawaban dari Word / teks.</span></li>
             <li class="flex gap-2"><span class="font-bold text-indigo-600 dark:text-indigo-400">02</span><span>Foto LJK dengan kamera belakang atau upload gambar.</span></li>
             <li class="flex gap-2"><span class="font-bold text-indigo-600 dark:text-indigo-400">03</span><span>AI membaca bulatan (OMR), tulisan tangan (OCR), lalu menilai esai.</span></li>
-            <li class="flex gap-2"><span class="font-bold text-indigo-600 dark:text-indigo-400">04</span><span>Simpan nilai &amp; ekspor rekap ke CSV/Excel.</span></li>
+            <li class="flex gap-2"><span class="font-bold text-indigo-600 dark:text-indigo-400">04</span><span>Simpan nilai &amp; ekspor rekap ke format nilai Excel sekolah.</span></li>
           </ol>
         </div>
-
-        <button id="btn-print-template-side" class="card w-full p-4 text-left transition hover:border-indigo-300 dark:hover:border-indigo-700">
-          <div class="flex items-center gap-3">
-            <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 15h12v6H6z"/></svg>
-            </div>
-            <div><p class="text-sm font-bold">Cetak Template LJK</p><p class="text-[11px] text-slate-500 dark:text-slate-400">40 PG · 10 Menjodohkan · 10 Esai</p></div>
-          </div>
-        </button>
 
         <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-[11px] leading-relaxed text-amber-800 dark:border-amber-900/50 dark:bg-amber-500/10 dark:text-amber-300">
           <strong>Privasi:</strong> API Key dan rekap hanya disimpan di <code>localStorage</code> browser ini. Tidak ada backend. Hapus kunci kapan saja lewat menu API Key.
@@ -442,7 +429,7 @@
         </div>
         <div class="mr-auto"><h2 class="text-base font-bold">Daftar Nilai / Rekap Sesi</h2><p class="text-xs text-slate-500 dark:text-slate-400">Tersimpan di browser selama sesi ini</p></div>
         <span id="rekap-count" class="chip bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">0 siswa</span>
-        <button id="btn-export-2" class="btn btn-ghost px-3 py-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"/></svg><span class="hidden sm:inline">Export CSV</span></button>
+        <button id="btn-export-2" class="btn btn-ghost px-3 py-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"/></svg><span class="hidden sm:inline">Export Excel</span></button>
         <button id="btn-clear-rekap" class="btn btn-danger px-3 py-2">Hapus</button>
       </div>
 
@@ -549,15 +536,10 @@
     </div>
   </div>
 
-  <!-- ============ PRINT FALLBACK ============ -->
-  <div id="print-fallback" class="fixed inset-0 z-50 hidden bg-white p-4 dark:bg-slate-900">
-    <div class="mx-auto mb-3 flex max-w-4xl items-center gap-3"><p class="mr-auto text-sm font-bold text-slate-700 dark:text-slate-200">Popup diblokir · Template terbuka di bawah. Klik tombol untuk mencetak.</p><button id="btn-print-fallback" class="btn btn-primary">Cetak</button><button id="btn-close-print" class="btn btn-ghost">Tutup</button></div>
-    <iframe id="print-iframe" title="Template LJK" class="mx-auto block h-[calc(100vh-90px)] w-full max-w-4xl rounded-lg border border-slate-300 bg-white"></iframe>
-  </div>
-
   <div id="toast-container" class="pointer-events-none fixed bottom-5 right-5 z-[60] flex w-[min(360px,calc(100vw-40px))] flex-col gap-2"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
   /* ======================================================================
      LJK VISION AI — aplikasi SPA murni (HTML + Tailwind + Vanilla JS)
@@ -1682,8 +1664,90 @@
       downloadCSV(rows, 'rekap-nilai-ljk-' + new Date().toISOString().slice(0, 10) + '.csv');
       toast('Rekap diekspor ke CSV (bisa dibuka di Excel).', 'success');
     }
-    $('btn-export-1').addEventListener('click', exportCSV);
-    $('btn-export-2').addEventListener('click', exportCSV);
+    /* ------- Ekspor .xlsx mengikuti format nilai ASTS sekolah ------- */
+    function exportRows() {
+      const list = filteredRekap().slice().reverse();
+      const rows = list.map((r, i) => ({
+        no: i + 1, nama: r.nama, kelas: r.kelas,
+        pg: Math.round(num(r.pgBenar, 0) * state.bobotObjektif * 10) / 10,
+        mj: Math.round(num(r.mjBenar, 0) * state.bobotObjektif * 10) / 10,
+        esai: num(r.skorEsai, 0), nilai: num(r.nilai, 0)
+      }));
+      const r = state.result;
+      if (r && !r.saved && (!state.rekapSearch && !state.rekapKelas || r.student.kelas === state.rekapKelas)) {
+        rows.push({
+          no: rows.length + 1, nama: r.student.nama + ' (belum disimpan)', kelas: r.student.kelas,
+          pg: Math.round(num(r.meta.pgBenar, 0) * state.bobotObjektif * 10) / 10,
+          mj: Math.round(num(r.meta.mjBenar, 0) * state.bobotObjektif * 10) / 10,
+          esai: num(r.meta.skorEsai, 0), nilai: num(r.meta.nilai, 0)
+        });
+      }
+      return rows;
+    }
+
+    function exportXLSX() {
+      if (typeof XLSX === 'undefined' || !XLSX.utils || !XLSX.writeFile) {
+        toast('Library Excel belum termuat. Ekspor CSV sebagai gantinya.', 'info');
+        exportCSV();
+        return;
+      }
+      const rows = exportRows();
+      if (!rows.length) { toast('Belum ada nilai untuk diekspor.', 'info'); return; }
+
+      const isXI = rows.some((r) => /\bXI\b|\b11\b/i.test(String(r.kelas)));
+      const interval = isXI ? ['0-71', '72-89', '90-100'] : ['0-69', '70-89', '90-100'];
+      const kode = isXI ? [38, 39, 40] : [35, 36, 37];
+      const wb = XLSX.utils.book_new();
+
+      /* Sheet Deskripsi: B9/C9 dan B11:C13 mengikuti template asli */
+      const desc = [];
+      desc[8] = ['', 'INTERVAL', 28];
+      desc[10] = ['', interval[0], kode[0]];
+      desc[11] = ['', interval[1], kode[1]];
+      desc[12] = ['', interval[2], kode[2]];
+      const wsDesc = XLSX.utils.aoa_to_sheet(desc);
+      wsDesc['!merges'] = [
+        { s: { r: 8, c: 1 }, e: { r: 9, c: 2 } }, { s: { r: 8, c: 3 }, e: { r: 9, c: 9 } },
+        { s: { r: 10, c: 1 }, e: { r: 10, c: 2 } }, { s: { r: 10, c: 3 }, e: { r: 10, c: 9 } },
+        { s: { r: 11, c: 1 }, e: { r: 11, c: 2 } }, { s: { r: 11, c: 3 }, e: { r: 11, c: 9 } },
+        { s: { r: 12, c: 1 }, e: { r: 12, c: 2 } }, { s: { r: 12, c: 3 }, e: { r: 12, c: 9 } }
+      ];
+      wsDesc['!cols'] = [{ wch: 3 }, { wch: 16 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+      XLSX.utils.book_append_sheet(wb, wsDesc, 'Deskripsi');
+
+      /* Satu sheet per kelas, header mengikuti template ASTS */
+      const groups = {};
+      rows.forEach((r) => { const k = String(r.kelas || 'Tanpa Kelas').trim(); (groups[k] = groups[k] || []).push(r); });
+      Object.keys(groups).forEach((kelas) => {
+        const aoa = [];
+        for (let i = 0; i < 7; i++) aoa[i] = ['', 11 + i, '', 11 + i];
+        aoa[9] = ['', 'DAFTAR NILAI ASESMEN SUMATIF TENGAH SEMESTER (ASTS) GANJIL'];
+        aoa[10] = ['', 'TAHUN AJARAN 2026/2027'];
+        aoa[12] = ['', 'Mata Pelajaran', ''];
+        aoa[13] = ['', 'KKM', 40];
+        aoa[15] = ['', 'No', 'Nama Peserta Didik', 'NILAI FORMATIF', '', '', '', '', 'NILAI SUMATIF', '', '', '', '', '', 'NILAI RAPOR'];
+        aoa[16] = ['', '', '', '', 'TP 2', 'TP 3', 'TP 4', 'NA (F)', '1', '2', '3', '4', 'NA (S)', '', ''];
+        groups[kelas].forEach((r, i) => {
+          aoa[17 + i] = ['', r.no, r.nama, '', '', '', '', '', r.pg, r.mj, r.esai, '', r.nilai, '', r.nilai];
+        });
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        ws['!merges'] = [
+          { s: { r: 9, c: 1 }, e: { r: 9, c: 14 } }, { s: { r: 10, c: 1 }, e: { r: 10, c: 14 } },
+          { s: { r: 15, c: 1 }, e: { r: 16, c: 1 } }, { s: { r: 15, c: 2 }, e: { r: 16, c: 2 } },
+          { s: { r: 15, c: 3 }, e: { r: 15, c: 7 } }, { s: { r: 15, c: 8 }, e: { r: 15, c: 13 } },
+          { s: { r: 15, c: 14 }, e: { r: 16, c: 14 } }
+        ];
+        ws['!cols'] = [{ wch: 3 }, { wch: 6 }, { wch: 34 }, { wch: 11 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 },
+          { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }];
+        const name = kelas.replace(/[\\\/\?\*\[\]:]/g, '-').slice(0, 31) || 'Kelas';
+        XLSX.utils.book_append_sheet(wb, ws, name);
+      });
+
+      XLSX.writeFile(wb, 'format-nilai-asts-' + new Date().toISOString().slice(0, 10) + '.xlsx');
+      toast('Rekap diekspor ke Excel (.xlsx) mengikuti format nilai sekolah.', 'success');
+    }
+    $('btn-export-1').addEventListener('click', exportXLSX);
+    $('btn-export-2').addEventListener('click', exportXLSX);
 
     /* --------------------------- Detail rekap --------------------------- */
     function openDetail(id) {
@@ -1758,76 +1822,6 @@
       state.maxStep = Math.max(state.maxStep, 2);
       updateSidebar(); setStep(2);
     });
-
-    /* ------------------------ Template LJK cetak ------------------------ */
-    function buildPrintHtml() {
-      const letters = ['A', 'B', 'C', 'D', 'E'];
-      const pg = Array.from({ length: 40 }, (_, i) =>
-        '<div class="pgrow"><b>' + (i + 1) + '.</b>' + letters.map((l) => '<span class="bub"><i></i><em>' + l + '</em></span>').join('') + '</div>'
-      ).join('');
-      const mjLeft = Array.from({ length: 10 }, (_, i) => '<div class="mjrow"><b>' + (i + 1) + '.</b> <span class="line"></span> <span class="bub"><i></i></span></div>').join('');
-      const mjRight = Array.from({ length: 10 }, (_, i) => '<div class="mjrow"><span class="bub"><i></i></span> <b>' + String.fromCharCode(65 + i) + '.</b> <span class="line"></span></div>').join('');
-      const esai = Array.from({ length: 10 }, (_, i) =>
-        '<div class="esairow"><b>' + (i + 1) + '.</b><div class="wr"><span></span><span></span><span></span></div></div>'
-      ).join('');
-      return '<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Template LJK Standar</title>' +
-        '<style>' +
-        '@page{size:A4;margin:12mm}' +
-        '*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;font-size:11px}' +
-        '.noprint{position:sticky;top:0;background:#eef2ff;border-bottom:1px solid #c7d2fe;padding:10px 16px;display:flex;gap:10px;align-items:center}' +
-        '.noprint button{background:#4f46e5;color:#fff;border:0;border-radius:6px;padding:8px 14px;font-weight:700;cursor:pointer}' +
-        '.noprint span{font-weight:700;color:#3730a3}' +
-        '.wrap{max-width:190mm;margin:16px auto;padding:0 4mm}' +
-        'h1{text-align:center;font-size:17px;letter-spacing:1.5px;margin:0 0 2px;text-transform:uppercase}' +
-        '.sub{text-align:center;font-size:10px;color:#555;margin-bottom:12px}' +
-        '.ident{width:100%;border-collapse:collapse;margin-bottom:10px}' +
-        '.ident td{border:1px solid #111;padding:6px 8px;height:28px;font-size:11px}' +
-        '.ident td.lb{width:70px;font-weight:700;background:#f3f4f6}' +
-        '.ident td.lb2{width:55px;font-weight:700;background:#f3f4f6}' +
-        '.petunjuk{border:1px solid #111;padding:7px 10px;font-size:10px;line-height:1.5;margin-bottom:12px;background:#fafafa}' +
-        'h2{font-size:12px;margin:14px 0 7px;padding:4px 8px;background:#111;color:#fff;letter-spacing:.5px}' +
-        '.pgwrap{column-count:2;column-gap:26px}' +
-        '.pgrow{break-inside:avoid;display:grid;grid-template-columns:28px repeat(5,1fr);align-items:center;border-bottom:1px dotted #bbb;height:21px}' +
-        '.pgrow b{font-size:11px}.bub{display:inline-flex;align-items:center;gap:3px}' +
-        '.bub i{display:inline-block;width:12px;height:12px;border:1.4px solid #111;border-radius:50%;background:#fff}' +
-        '.bub em{font-style:normal;font-size:10px}' +
-        '.mj{display:grid;grid-template-columns:1fr 1fr;gap:26px}' +
-        '.mjrow{display:flex;align-items:center;gap:6px;height:24px;border-bottom:1px dotted #bbb}' +
-        '.mjrow .line{flex:1;border-bottom:1px solid #bbb;height:1px}' +
-        '.esairow{display:flex;gap:8px;break-inside:avoid;margin-bottom:6px}' +
-        '.esairow>b{width:18px;flex:none;padding-top:2px}.wr{flex:1}' +
-        '.wr span{display:block;height:22px;border-bottom:1px solid #999}' +
-        '.foot{margin-top:18px;display:flex;justify-content:space-between;font-size:10px}' +
-        '@media print{.noprint{display:none}.wrap{margin:0;padding:0}h2{background:#111!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}a{color:inherit}}' +
-        '</style></head><body>' +
-        '<div class="noprint"><span>Template LJK Standar</span><button onclick="window.print()">🖨 Cetak (Ctrl+P)</button><small>40 PG · 10 Menjodohkan · 10 Esai · kertas A4</small></div>' +
-        '<div class="wrap">' +
-        '<h1>Lembar Jawaban Siswa (LJK)</h1>' +
-        '<div class="sub">Sistem Koreksi Otomatis · OMR + OCR + AI Grading — hitamkan bulatan dengan pensil</div>' +
-        '<table class="ident"><tr><td class="lb">Nama</td><td></td><td class="lb2">Kelas</td><td style="width:110px"></td><td class="lb2">Tanggal</td><td style="width:100px"></td></tr>' +
-        '<tr><td class="lb">Mata Pelajaran</td><td colspan="3"></td><td class="lb2">NIS</td><td></td></tr></table>' +
-        '<div class="petunjuk"><b>PETUNJUK:</b> (1) Isi identitas dengan jelas menggunakan tinta hitam. (2) Untuk Pilihan Ganda & Menjodohkan, hitamkan bulatan pilihan Anda — jangan dicentang atau dicoret. (3) Jika ingin mengganti jawaban, hapus dengan penghapus bersih. (4) Untuk Esai, tulis dengan tulisan tangan yang jelas dan terbaca. (5) Jangan berlipat atau merusak lembar ini.</div>' +
-        '<h2>A. PILIHAN GANDA (1 – 40)</h2><div class="pgwrap">' + pg + '</div>' +
-        '<h2>B. MENJODOHKAN (1 – 10)</h2><div class="mj"><div>' + mjLeft + '</div><div>' + mjRight + '</div></div>' +
-        '<h2>C. ESAI / URAIAN (1 – 10)</h2>' + esai +
-        '<div class="foot"><span>Disetujui Guru: ................................</span><span>Paraf Siswa: ................................</span></div>' +
-        '</div></body></html>';
-    }
-
-    function openPrintTemplate() {
-      const html = buildPrintHtml();
-      const w = window.open('', '_blank');
-      if (w) {
-        w.document.open(); w.document.write(html); w.document.close(); w.focus();
-      } else {
-        $('print-iframe').srcdoc = html;
-        $('print-fallback').classList.remove('hidden');
-      }
-    }
-    $('btn-print-template').addEventListener('click', openPrintTemplate);
-    $('btn-print-template-side').addEventListener('click', openPrintTemplate);
-    $('btn-print-fallback').addEventListener('click', () => { try { $('print-iframe').contentWindow.focus(); $('print-iframe').contentWindow.print(); } catch (e) { window.print(); } });
-    $('btn-close-print').addEventListener('click', () => $('print-fallback').classList.add('hidden'));
 
     /* ------------------------------- Init ------------------------------- */
     const savedTheme = safeGet(STORE.theme, '');
